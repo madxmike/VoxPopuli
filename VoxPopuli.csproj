@@ -27,6 +27,14 @@
 
         <ShadercrossDir>$(NativeDir)/SDL_shadercross</ShadercrossDir>
         <ShadercrossBuildDir>$(MSBuildProjectDirectory)/obj/native/SDL_shadercross/build</ShadercrossBuildDir>
+
+        <ShadercrossCLI Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(NativeInstallDir)/bin/shadercross.exe</ShadercrossCLI>
+        <ShadercrossCLI Condition="!$([MSBuild]::IsOSPlatform('Windows'))">$(NativeInstallDir)/bin/shadercross</ShadercrossCLI>
+        <ShaderOutputDir>$(MSBuildProjectDirectory)/Shaders/compiled</ShaderOutputDir>
+
+        <!-- Limit parallel jobs during native builds to avoid OOM.
+             Increase if you have plenty of RAM, decrease to 1 if builds are still swapping. -->
+        <NativeBuildJobs>8</NativeBuildJobs>
     </PropertyGroup>
 
     <ItemGroup>
@@ -36,9 +44,9 @@
     </ItemGroup>
 
     <PropertyGroup>
-        <!-- DXC adds significant compile times (>30 mins) and only makes sense on Windows -->
-        <ShadercrossDXC Condition="$([MSBuild]::IsOSPlatform('Windows'))">ON</ShadercrossDXC>
-        <ShadercrossDXC Condition="!$([MSBuild]::IsOSPlatform('Windows'))">OFF</ShadercrossDXC>
+        <!-- DXC is built on all platforms for a fully self-contained build.
+             Note: first build will take 30+ minutes due to LLVM compilation. -->
+        <ShadercrossDXC>ON</ShadercrossDXC>
 
         <!-- Native library output name differs per platform -->
         <SDL3ShadercrossLib Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(NativeInstallDir)/bin/SDL3_shadercross.dll</SDL3ShadercrossLib>
@@ -90,11 +98,11 @@
             Condition="!Exists('$(SDL3Lib)')">
         <Exec Command="cmake -S $(SDL3Dir) -B $(SDL3BuildDir) -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(NativeInstallDir) -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0"
               WorkingDirectory="$(MSBuildProjectDirectory)" />
-        <Exec Command="cmake --build $(SDL3BuildDir) --config Release --parallel" />
+        <Exec Command="cmake --build $(SDL3BuildDir) --config Release -- -j$(NativeBuildJobs)" />
         <Exec Command="cmake --install $(SDL3BuildDir) --config Release" />
     </Target>
 
-    <!-- Clone SDL_shadercross and init submodules (SPIRV-Cross etc) if not already present -->
+    <!-- Clone SDL_shadercross and init submodules (SPIRV-Cross, DXC etc) if not already present -->
     <Target Name="CloneSDLShadercross"
             BeforeTargets="BuildSDLShadercross"
             Condition="!Exists('$(ShadercrossDir)/.git')">
@@ -106,22 +114,21 @@
     <Target Name="BuildSDLShadercross"
             BeforeTargets="Build"
             Condition="!Exists('$(SDL3ShadercrossLib)')">
-        <Exec Command="cmake -S $(ShadercrossDir) -B $(ShadercrossBuildDir) -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(NativeInstallDir) -DCMAKE_PREFIX_PATH=$(NativeInstallDir) -DSDLSHADERCROSS_VENDORED=ON -DSDLSHADERCROSS_SPIRVCROSS_SHARED=OFF -DSDLSHADERCROSS_SHARED=ON -DSDLSHADERCROSS_STATIC=OFF -DSDLSHADERCROSS_CLI=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DSDLSHADERCROSS_DXC=ON"
+        <Exec Command="cmake -S $(ShadercrossDir) -B $(ShadercrossBuildDir) -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(NativeInstallDir) -DCMAKE_PREFIX_PATH=$(NativeInstallDir) -DSDLSHADERCROSS_VENDORED=ON -DSDLSHADERCROSS_SPIRVCROSS_SHARED=OFF -DSDLSHADERCROSS_SHARED=ON -DSDLSHADERCROSS_STATIC=OFF -DSDLSHADERCROSS_CLI=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DSDLSHADERCROSS_DXC=$(ShadercrossDXC)"
               WorkingDirectory="$(MSBuildProjectDirectory)" />
-        <Exec Command="cmake --build $(ShadercrossBuildDir) --config Release --parallel" />
+        <Exec Command="cmake --build $(ShadercrossBuildDir) --config Release -- -j$(NativeBuildJobs)" />
         <Exec Command="cmake --install $(ShadercrossBuildDir) --config Release" />
 
         <!-- Manually copy CLI since it may not be part of the default install -->
         <MakeDir Directories="$(NativeInstallDir)/bin" />
         <Copy SourceFiles="$(ShadercrossBuildDir)/shadercross"
-            DestinationFolder="$(NativeInstallDir)/bin"
-            Condition="!$([MSBuild]::IsOSPlatform('Windows'))" />
+              DestinationFolder="$(NativeInstallDir)/bin"
+              Condition="!$([MSBuild]::IsOSPlatform('Windows'))" />
         <Copy SourceFiles="$(ShadercrossBuildDir)/Release/shadercross.exe"
-            DestinationFolder="$(NativeInstallDir)/bin"
-            Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
-
+              DestinationFolder="$(NativeInstallDir)/bin"
+              Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
         <Exec Command="chmod +x $(NativeInstallDir)/bin/shadercross"
-            Condition="!$([MSBuild]::IsOSPlatform('Windows'))" />
+              Condition="!$([MSBuild]::IsOSPlatform('Windows'))" />
     </Target>
 
     <!-- Copy all native libs to the dotnet output directory -->
@@ -134,55 +141,21 @@
         <Copy SourceFiles="@(NativeLibs)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
     </Target>
 
-    <PropertyGroup>
-        <ShadercrossCLI Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(NativeInstallDir)/bin/shadercross.exe</ShadercrossCLI>
-        <ShadercrossCLI Condition="!$([MSBuild]::IsOSPlatform('Windows'))">$(NativeInstallDir)/bin/shadercross</ShadercrossCLI>
-        <ShaderOutputDir>$(MSBuildProjectDirectory)/Shaders/compiled</ShaderOutputDir>
-    </PropertyGroup>
+    <Target Name="CompileShaders" BeforeTargets="Build">
+        <Exec Command="bash $(MSBuildProjectDirectory)/Scripts/compile-shaders.sh"
+            Condition="!$([MSBuild]::IsOSPlatform('Windows'))"
+            WorkingDirectory="$(MSBuildProjectDirectory)" />
+        <Exec Command="powershell -ExecutionPolicy Bypass -File $(MSBuildProjectDirectory)/Scripts/compile-shaders.ps1"
+            Condition="$([MSBuild]::IsOSPlatform('Windows'))"
+            WorkingDirectory="$(MSBuildProjectDirectory)" />
 
-    <PropertyGroup>
-        <ShadercrossCLI Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(NativeInstallDir)/bin/shadercross.exe</ShadercrossCLI>
-        <ShadercrossCLI Condition="!$([MSBuild]::IsOSPlatform('Windows'))">$(NativeInstallDir)/bin/shadercross</ShadercrossCLI>
-        <ShaderOutputDir>$(MSBuildProjectDirectory)/Shaders/compiled</ShaderOutputDir>
-    </PropertyGroup>
-
-<Target Name="CompileShaders" BeforeTargets="Build">
-    <Error
-        Condition="!Exists('$(ShadercrossCLI)')"
-        Text="shadercross CLI not found at $(ShadercrossCLI). Delete native/install and obj/native/SDL_shadercross and rebuild." />
-
-    <ItemGroup>
-        <VertexShaders Include="$(MSBuildProjectDirectory)/Shaders/**/*.vert.hlsl" />
-        <FragmentShaders Include="$(MSBuildProjectDirectory)/Shaders/**/*.frag.hlsl" />
-        <ComputeShaders Include="$(MSBuildProjectDirectory)/Shaders/**/*.comp.hlsl" />
-    </ItemGroup>
-
-    <MakeDir Directories="$(ShaderOutputDir)/spirv" />
-    <MakeDir Directories="$(ShaderOutputDir)/msl" />
-    <MakeDir Directories="$(ShaderOutputDir)/dxil" />
-
-    <!-- Vertex shaders -->
-    <Exec Command="&quot;$(ShadercrossCLI)&quot; %(VertexShaders.Identity) -o $(ShaderOutputDir)/spirv/%(VertexShaders.Filename).spv --source HLSL --dest SPIRV --stage vertex" Condition="'@(VertexShaders)' != ''" />
-    <Exec Command="&quot;$(ShadercrossCLI)&quot; %(VertexShaders.Identity) -o $(ShaderOutputDir)/msl/%(VertexShaders.Filename).msl --source HLSL --dest MSL --stage vertex" Condition="'@(VertexShaders)' != ''" />
-    <Exec Command="&quot;$(ShadercrossCLI)&quot; %(VertexShaders.Identity) -o $(ShaderOutputDir)/dxil/%(VertexShaders.Filename).dxil --source HLSL --dest DXIL --stage vertex" Condition="'@(VertexShaders)' != '' and $([MSBuild]::IsOSPlatform('Windows'))" />
-
-    <!-- Fragment shaders -->
-    <Exec Command="&quot;$(ShadercrossCLI)&quot; %(FragmentShaders.Identity) -o $(ShaderOutputDir)/spirv/%(FragmentShaders.Filename).spv --source HLSL --dest SPIRV --stage fragment" Condition="'@(FragmentShaders)' != ''" />
-    <Exec Command="&quot;$(ShadercrossCLI)&quot; %(FragmentShaders.Identity) -o $(ShaderOutputDir)/msl/%(FragmentShaders.Filename).msl --source HLSL --dest MSL --stage fragment" Condition="'@(FragmentShaders)' != ''" />
-    <Exec Command="&quot;$(ShadercrossCLI)&quot; %(FragmentShaders.Identity) -o $(ShaderOutputDir)/dxil/%(FragmentShaders.Filename).dxil --source HLSL --dest DXIL --stage fragment" Condition="'@(FragmentShaders)' != '' and $([MSBuild]::IsOSPlatform('Windows'))" />
-
-    <!-- Compute shaders -->
-    <Exec Command="&quot;$(ShadercrossCLI)&quot; %(ComputeShaders.Identity) -o $(ShaderOutputDir)/spirv/%(ComputeShaders.Filename).spv --source HLSL --dest SPIRV --stage compute" Condition="'@(ComputeShaders)' != ''" />
-    <Exec Command="&quot;$(ShadercrossCLI)&quot; %(ComputeShaders.Identity) -o $(ShaderOutputDir)/msl/%(ComputeShaders.Filename).msl --source HLSL --dest MSL --stage compute" Condition="'@(ComputeShaders)' != ''" />
-    <Exec Command="&quot;$(ShadercrossCLI)&quot; %(ComputeShaders.Identity) -o $(ShaderOutputDir)/dxil/%(ComputeShaders.Filename).dxil --source HLSL --dest DXIL --stage compute" Condition="'@(ComputeShaders)' != '' and $([MSBuild]::IsOSPlatform('Windows'))" />
-
-    <!-- Copy compiled shaders to output -->
-    <ItemGroup>
-        <CompiledShaders Include="$(ShaderOutputDir)/**/*" />
-    </ItemGroup>
-    <Copy SourceFiles="@(CompiledShaders)"
-          DestinationFiles="@(CompiledShaders->'$(OutputPath)/Shaders/compiled/%(RecursiveDir)%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
-</Target>
+        <!-- Copy compiled shaders to output -->
+        <ItemGroup>
+            <CompiledShaders Include="$(ShaderOutputDir)/**/*" />
+        </ItemGroup>
+        <Copy SourceFiles="@(CompiledShaders)"
+            DestinationFiles="@(CompiledShaders->'$(OutputPath)/Shaders/compiled/%(RecursiveDir)%(Filename)%(Extension)')"
+            SkipUnchangedFiles="true" />
+    </Target>
 
 </Project>
