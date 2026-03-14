@@ -12,7 +12,7 @@ using SDL;
 /// Callers interact with it through safe wrapper methods; no SDL types cross
 /// the boundary into <see cref="SdlRenderer"/> or above.
 /// </summary>
-internal sealed unsafe class GpuDevice : IDisposable
+internal sealed unsafe class SdlGpuDevice : IDisposable
 {
     internal SDL_GPUDevice* Device { get; private set; }
     internal SDL_Window* Window { get; private set; }
@@ -26,7 +26,7 @@ internal sealed unsafe class GpuDevice : IDisposable
     /// pipeline, and allocates the initial depth texture sized to the window.
     /// Throws on any SDL failure so callers never hold a partially-initialised device.
     /// </summary>
-    internal GpuDevice(string title, int width, int height)
+    internal SdlGpuDevice(string title, int width, int height)
     {
         SDL3.SDL_Init(SDL_InitFlags.SDL_INIT_VIDEO);
 
