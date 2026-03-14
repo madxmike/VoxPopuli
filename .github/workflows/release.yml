@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            os-name: linux
+          - os: macos-latest
+            rid: osx-arm64
+            os-name: macos
+          - os: windows-latest
+            rid: win-x64
+            os-name: windows
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install prerequisites (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get install -y cmake ninja-build libvulkan-dev
+
+      - name: Install prerequisites (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install cmake
+
+      - name: Install prerequisites (Windows)
+        if: matrix.os == 'windows-latest'
+        run: choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ matrix.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ matrix.os }}-
+
+      - name: Cache native libs
+        id: cache-native
+        uses: actions/cache@v4
+        with:
+          path: |
+            native/install/
+            obj/native/
+          key: native-${{ matrix.os }}-sdl-${{ hashFiles('native/SDL/**') }}-shadercross-${{ hashFiles('native/SDL_shadercross/**') }}
+
+      - name: Publish
+        run: dotnet publish -c Release --self-contained true -r ${{ matrix.rid }} -o publish/ -p:SkipShaderCompilation=true
+
+      - name: Zip artifacts (Unix)
+        if: matrix.os != 'windows-latest'
+        run: zip -r VoxPopuli-${{ github.ref_name }}-${{ matrix.os-name }}.zip publish/
+
+      - name: Zip artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        run: Compress-Archive -Path publish/ -DestinationPath VoxPopuli-${{ github.ref_name }}-${{ matrix.os-name }}.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoxPopuli-${{ github.ref_name }}-${{ matrix.os-name }}
+          path: VoxPopuli-${{ github.ref_name }}-${{ matrix.os-name }}.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: '*.zip'

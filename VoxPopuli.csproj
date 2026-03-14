@@ -142,7 +142,7 @@
         <Copy SourceFiles="@(NativeLibs)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
     </Target>
 
-    <Target Name="CompileShaders" BeforeTargets="Build">
+    <Target Name="CompileShaders" BeforeTargets="Build" Condition="'$(SkipShaderCompilation)' != 'true'">
         <Exec Command="bash $(MSBuildProjectDirectory)/Scripts/compile-shaders.sh"
             Condition="!$([MSBuild]::IsOSPlatform('Windows'))"
             WorkingDirectory="$(MSBuildProjectDirectory)" />
