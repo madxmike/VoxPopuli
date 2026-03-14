@@ -55,7 +55,7 @@ public interface IRenderer : IDisposable
     /// Renders all <paramref name="instances"/> and presents the frame.
     /// Each instance is drawn with its own MVP derived from <see cref="MeshInstance.Transform"/>.
     /// </summary>
-    void DrawFrame(ReadOnlySpan<MeshInstance> instances);
+    void DrawFrame(ReadOnlySpan<MeshInstance> instances, Matrix4x4 view);
 }
 
 // ── Internal implementation ───────────────────────────────────────────────────
@@ -118,7 +118,7 @@ internal sealed unsafe class SdlRenderer : IRenderer
             buf.Dispose(_gpu.Device);
     }
 
-    public void DrawFrame(ReadOnlySpan<MeshInstance> instances)
+    public void DrawFrame(ReadOnlySpan<MeshInstance> instances, Matrix4x4 view)
     {
         var cmd = _gpu.AcquireCommandBuffer();
         SDL_GPUTexture* swapchain; uint sw, sh;
@@ -153,7 +153,7 @@ internal sealed unsafe class SdlRenderer : IRenderer
         foreach (var instance in instances)
         {
             if (!_meshes.TryGetValue(instance.Mesh.Id, out var buf)) continue;
-            var mvp = BuildMVP(instance.Transform, sw, sh);
+            var mvp = BuildMVP(instance.Transform, view, sw, sh);
             fixed (float* mvpPtr = mvp)
                 SDL3.SDL_PushGPUVertexUniformData(cmd, 0, (nint)mvpPtr, 64);
             var vbBinding = new SDL_GPUBufferBinding { buffer = buf.GpuBuffer, offset = 0 };
@@ -180,7 +180,7 @@ internal sealed unsafe class SdlRenderer : IRenderer
     /// The model transform comes from <paramref name="model"/> (System.Numerics row-major),
     /// transposed to column-major before multiplication.
     /// </summary>
-    private static float[] BuildMVP(Matrix4x4 model, uint w, uint h)
+    private static float[] BuildMVP(Matrix4x4 model, Matrix4x4 view, uint w, uint h)
     {
         float f = 1.0f / MathF.Tan(MathF.PI / 8f);
         float aspect = (float)w / h;
@@ -193,11 +193,15 @@ internal sealed unsafe class SdlRenderer : IRenderer
         proj[11] = -1f;
         proj[14] = (2f * near * far) / (near - far);
 
-        float[] view = new float[16];
-        view[0] = view[5] = view[10] = view[15] = 1f;
-        view[14] = -2.5f;
-
         // System.Numerics uses row-major storage; the shader expects column-major.
+        float[] v =
+        [
+            view.M11, view.M21, view.M31, view.M41,
+            view.M12, view.M22, view.M32, view.M42,
+            view.M13, view.M23, view.M33, view.M43,
+            view.M14, view.M24, view.M34, view.M44,
+        ];
+
         float[] m =
         [
             model.M11, model.M21, model.M31, model.M41,
@@ -206,7 +210,7 @@ internal sealed unsafe class SdlRenderer : IRenderer
             model.M14, model.M24, model.M34, model.M44,
         ];
 
-        return Mul(Mul(proj, view), m);
+        return Mul(Mul(proj, v), m);
     }
 
     // Column-major 4×4 matrix multiply: r[j,i] = Σ a[k,i] * b[j,k]

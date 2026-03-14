@@ -12,6 +12,7 @@ internal sealed class VoxGame : IDisposable
     private readonly IRenderer _renderer;
     private readonly MeshHandle _cubeMesh;
     private readonly MeshInstance[] _instances;
+    private readonly GodCamera _camera = new();
 
     // 36 explicit vertices (6 faces × 2 triangles × 3 vertices), no index buffer.
     // Each vertex: world-space position + RGB color in [0,1].
@@ -74,7 +75,11 @@ internal sealed class VoxGame : IDisposable
         _instances = [new MeshInstance(_cubeMesh, rotY * rotX)];
     }
 
-    internal void Tick() => _renderer.DrawFrame(_instances);
+    internal void Tick(CameraInput input)
+    {
+        var view = _camera.Update(input);
+        _renderer.DrawFrame(_instances, view);
+    }
 
     public void Dispose() => _renderer.ReleaseMesh(_cubeMesh);
 }
