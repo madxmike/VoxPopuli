@@ -18,7 +18,7 @@ internal static class Program
             while (run)
             {
                 ulong now = SDL3.SDL_GetPerformanceCounter();
-                float deltaTime = (float)(now - prevCounter) / freq;
+                float deltaTime = (float)(now - prevCounter) / (float)freq;
                 prevCounter = now;
 
                 float zoomDelta = 0f, mouseDX = 0f, mouseDY = 0f;
@@ -49,6 +49,7 @@ internal static class Program
                 if (keys[(int)SDL_Scancode.SDL_SCANCODE_D]) panX = 1f;
                 if (keys[(int)SDL_Scancode.SDL_SCANCODE_Q]) rotateDelta = -1f;
                 if (keys[(int)SDL_Scancode.SDL_SCANCODE_E]) rotateDelta = 1f;
+
 
                 var input = new CameraInput(panX, panZ, zoomDelta, rotateDelta, mouseDX, mouseDY, deltaTime);
                 game.Tick(input);
