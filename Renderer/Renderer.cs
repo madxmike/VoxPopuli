@@ -8,6 +8,10 @@ using SDL;
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+/// <summary>
+/// A single vertex in world space. Sequential layout matches the GPU pipeline:
+/// float3 position (offset 0) followed by float3 color (offset 12), 24 bytes total.
+/// </summary>
 [StructLayout(LayoutKind.Sequential)]
 public readonly struct Vertex
 {
@@ -16,8 +20,15 @@ public readonly struct Vertex
     public Vertex(Vector3 position, Vector3 color) { Position = position; Color = color; }
 }
 
+/// <summary>
+/// Opaque reference to geometry uploaded to the GPU. The renderer owns the
+/// underlying buffer; callers may only pass this handle back to the renderer.
+/// </summary>
 public readonly record struct MeshHandle(int Id);
 
+/// <summary>
+/// A single draw request: which mesh to draw and where to place it in world space.
+/// </summary>
 public readonly struct MeshInstance
 {
     public readonly MeshHandle Mesh;
@@ -25,15 +36,35 @@ public readonly struct MeshInstance
     public MeshInstance(MeshHandle mesh, Matrix4x4 transform) { Mesh = mesh; Transform = transform; }
 }
 
+/// <summary>
+/// Renders geometry submitted by the game. The game never sees SDL types,
+/// command buffers, or GPU resource handles — only these three methods.
+/// </summary>
 public interface IRenderer : IDisposable
 {
+    /// <summary>
+    /// Uploads vertex data to the GPU and returns an opaque handle.
+    /// The caller owns the handle and must call <see cref="ReleaseMesh"/> when done.
+    /// </summary>
     MeshHandle UploadMesh(ReadOnlySpan<Vertex> vertices);
+
+    /// <summary>Releases the GPU buffer associated with <paramref name="handle"/>.</summary>
     void ReleaseMesh(MeshHandle handle);
+
+    /// <summary>
+    /// Renders all <paramref name="instances"/> and presents the frame.
+    /// Each instance is drawn with its own MVP derived from <see cref="MeshInstance.Transform"/>.
+    /// </summary>
     void DrawFrame(ReadOnlySpan<MeshInstance> instances);
 }
 
 // ── Internal implementation ───────────────────────────────────────────────────
 
+/// <summary>
+/// SDL3-backed <see cref="IRenderer"/>. Translates safe game-side calls into
+/// SDL GPU command buffers, transfer uploads, and render passes.
+/// All unsafe code is confined to this class and <see cref="GpuDevice"/>.
+/// </summary>
 internal sealed unsafe class SdlRenderer : IRenderer
 {
     private readonly GpuDevice _gpu;
@@ -92,6 +123,7 @@ internal sealed unsafe class SdlRenderer : IRenderer
         var cmd = _gpu.AcquireCommandBuffer();
         SDL_GPUTexture* swapchain; uint sw, sh;
         SDL3.SDL_WaitAndAcquireGPUSwapchainTexture(cmd, _gpu.Window, &swapchain, &sw, &sh);
+        // Swapchain texture can be null when the window is minimised or occluded.
         if (swapchain == null) { SDL3.SDL_CancelGPUCommandBuffer(cmd); return; }
 
         _gpu.ResizeDepthTextureIfNeeded(sw, sh);
@@ -108,6 +140,7 @@ internal sealed unsafe class SdlRenderer : IRenderer
             texture = _gpu.DepthTexture,
             clear_depth = 1.0f,
             load_op = SDL_GPULoadOp.SDL_GPU_LOADOP_CLEAR,
+            // Depth values don't need to be read back after the pass.
             store_op = SDL_GPUStoreOp.SDL_GPU_STOREOP_DONT_CARE,
             stencil_load_op = SDL_GPULoadOp.SDL_GPU_LOADOP_DONT_CARE,
             stencil_store_op = SDL_GPUStoreOp.SDL_GPU_STOREOP_DONT_CARE,
@@ -140,6 +173,13 @@ internal sealed unsafe class SdlRenderer : IRenderer
         _gpu.Dispose();
     }
 
+    /// <summary>
+    /// Builds a column-major MVP matrix for the vertex shader uniform buffer.
+    /// Projection: 45° vertical FOV, near=0.01, far=100.
+    /// View: camera fixed at Z=+2.5 looking toward the origin.
+    /// The model transform comes from <paramref name="model"/> (System.Numerics row-major),
+    /// transposed to column-major before multiplication.
+    /// </summary>
     private static float[] BuildMVP(Matrix4x4 model, uint w, uint h)
     {
         float f = 1.0f / MathF.Tan(MathF.PI / 8f);
@@ -153,12 +193,11 @@ internal sealed unsafe class SdlRenderer : IRenderer
         proj[11] = -1f;
         proj[14] = (2f * near * far) / (near - far);
 
-        // view: identity translated -2.5 on Z
         float[] view = new float[16];
         view[0] = view[5] = view[10] = view[15] = 1f;
         view[14] = -2.5f;
 
-        // model matrix from Matrix4x4 (row-major) → column-major float[16]
+        // System.Numerics uses row-major storage; the shader expects column-major.
         float[] m =
         [
             model.M11, model.M21, model.M31, model.M41,
@@ -170,6 +209,7 @@ internal sealed unsafe class SdlRenderer : IRenderer
         return Mul(Mul(proj, view), m);
     }
 
+    // Column-major 4×4 matrix multiply: r[j,i] = Σ a[k,i] * b[j,k]
     private static float[] Mul(float[] a, float[] b)
     {
         var r = new float[16];
@@ -182,6 +222,10 @@ internal sealed unsafe class SdlRenderer : IRenderer
 
     // ── Nested private type ───────────────────────────────────────────────────
 
+    /// <summary>
+    /// Wraps a single GPU vertex buffer. Lifetime is managed by <see cref="SdlRenderer"/>;
+    /// disposal requires the device pointer because SDL buffers aren't self-releasing.
+    /// </summary>
     private sealed class MeshBuffer
     {
         internal SDL_GPUBuffer* GpuBuffer { get; }

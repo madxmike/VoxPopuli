@@ -6,6 +6,12 @@ using System.Runtime.InteropServices;
 using System.Text;
 using SDL;
 
+/// <summary>
+/// Owns all SDL3 GPU resources: window, device, pipeline, and depth texture.
+/// This is the only place in the codebase where unsafe SDL pointer types live.
+/// Callers interact with it through safe wrapper methods; no SDL types cross
+/// the boundary into <see cref="SdlRenderer"/> or above.
+/// </summary>
 internal sealed unsafe class GpuDevice : IDisposable
 {
     internal SDL_GPUDevice* Device { get; private set; }
@@ -15,6 +21,11 @@ internal sealed unsafe class GpuDevice : IDisposable
     internal uint DepthWidth { get; private set; }
     internal uint DepthHeight { get; private set; }
 
+    /// <summary>
+    /// Initialises SDL, creates the window and GPU device, builds the cube
+    /// pipeline, and allocates the initial depth texture sized to the window.
+    /// Throws on any SDL failure so callers never hold a partially-initialised device.
+    /// </summary>
     internal GpuDevice(string title, int width, int height)
     {
         SDL3.SDL_Init(SDL_InitFlags.SDL_INIT_VIDEO);
@@ -46,6 +57,11 @@ internal sealed unsafe class GpuDevice : IDisposable
     internal SDL_GPUCommandBuffer* AcquireCommandBuffer() =>
         SDL3.SDL_AcquireGPUCommandBuffer(Device);
 
+    /// <summary>
+    /// Recreates the depth texture when the swapchain dimensions change.
+    /// Must be called before beginning a render pass each frame so the depth
+    /// target always matches the current swapchain size.
+    /// </summary>
     internal void ResizeDepthTextureIfNeeded(uint w, uint h)
     {
         if (w == DepthWidth && h == DepthHeight) return;
@@ -55,6 +71,12 @@ internal sealed unsafe class GpuDevice : IDisposable
         DepthHeight = h;
     }
 
+    /// <summary>
+    /// Builds the single graphics pipeline used for all cube geometry.
+    /// Vertex layout: float3 position at offset 0, float3 color at offset 12 (pitch = 24 bytes).
+    /// Depth test uses LESS_OR_EQUAL to handle coplanar geometry without z-fighting.
+    /// Shaders are released immediately after pipeline creation — SDL copies what it needs.
+    /// </summary>
     private SDL_GPUGraphicsPipeline* CreateCubePipeline()
     {
         var vert = LoadShader("Cube.vert", numUniformBuffers: 1);
@@ -116,6 +138,11 @@ internal sealed unsafe class GpuDevice : IDisposable
         return pipeline;
     }
 
+    /// <summary>
+    /// Creates a D16_UNORM depth texture at the given pixel dimensions.
+    /// D16 is sufficient for the current near/far range (0.01–100) and avoids
+    /// the memory overhead of D32.
+    /// </summary>
     internal SDL_GPUTexture* CreateDepthTexture(uint w, uint h)
     {
         var createInfo = new SDL_GPUTextureCreateInfo
@@ -132,6 +159,11 @@ internal sealed unsafe class GpuDevice : IDisposable
         return SDL3.SDL_CreateGPUTexture(Device, &createInfo);
     }
 
+    /// <summary>
+    /// Loads a pre-compiled shader from <c>Shaders/compiled/{backend}/{name}.hlsl.{ext}</c>.
+    /// The backend and entry point name are selected per platform: MSL on macOS uses
+    /// "main0" (shadercross convention), DXIL and SPIRV use "main".
+    /// </summary>
     private SDL_GPUShader* LoadShader(string name, uint numUniformBuffers = 0)
     {
         var stage = name.Contains(".vert")
@@ -164,6 +196,10 @@ internal sealed unsafe class GpuDevice : IDisposable
         }
     }
 
+    /// <summary>
+    /// Releases GPU resources in reverse-creation order. Pipeline and depth
+    /// texture must be released before the device; window last.
+    /// </summary>
     public void Dispose()
     {
         SDL3.SDL_ReleaseGPUGraphicsPipeline(Device, Pipeline);
