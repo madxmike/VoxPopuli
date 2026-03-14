@@ -67,12 +67,7 @@ internal sealed class VoxGame : IDisposable
         _renderer = renderer;
         _cubeMesh = renderer.UploadMesh(CubeVertices);
 
-        // Static 45° Y + 30° X rotation so all three visible face groups are distinguishable.
-        float angleY = MathF.PI / 4f;
-        float angleX = MathF.PI / 6f;
-        var rotY = Matrix4x4.CreateRotationY(angleY);
-        var rotX = Matrix4x4.CreateRotationX(angleX);
-        _instances = [new MeshInstance(_cubeMesh, rotY * rotX)];
+        _instances = [new MeshInstance(_cubeMesh, Matrix4x4.Identity)];
     }
 
     internal void Tick(CameraInput input)
