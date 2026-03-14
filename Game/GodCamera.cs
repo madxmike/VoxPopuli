@@ -24,7 +24,7 @@ internal sealed class GodCamera
     private float _pitchSmoothed = MathF.PI / 4f;
     private float _distanceSmoothed = 10f;
 
-    internal Matrix4x4 Update(CameraInput input)
+    internal CameraView Update(CameraInput input)
     {
         var forward = new Vector3(-MathF.Sin(_yawGoal), 0, -MathF.Cos(_yawGoal));
         var right = new Vector3(MathF.Cos(_yawGoal), 0, -MathF.Sin(_yawGoal));
@@ -47,6 +47,6 @@ internal sealed class GodCamera
             _distanceSmoothed * MathF.Sin(_pitchSmoothed),
             _distanceSmoothed * MathF.Cos(_pitchSmoothed) * MathF.Cos(_yawSmoothed)
         );
-        return Matrix4x4.CreateLookAt(eye, _targetSmoothed, Vector3.UnitY);
+        return new CameraView(eye, _targetSmoothed, Vector3.UnitY);
     }
 }

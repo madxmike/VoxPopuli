@@ -1,6 +1,5 @@
 namespace VoxPopuli.Game;
 
-using System.Numerics;
 using VoxPopuli.Renderer;
 
 /// <summary>
@@ -67,7 +66,7 @@ internal sealed class VoxGame : IDisposable
         _renderer = renderer;
         _cubeMesh = renderer.UploadMesh(CubeVertices);
 
-        _instances = [new MeshInstance(_cubeMesh, Matrix4x4.Identity)];
+        _instances = [new MeshInstance(_cubeMesh, Transform.Identity)];
     }
 
     internal void Tick(CameraInput input)
