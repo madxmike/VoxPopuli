@@ -184,6 +184,12 @@ internal static class Program
         return gpuBuffer;
     }
 
+    private static float[] Mul(float[] a, float[] b) {
+        var r = new float[16];
+        for (int j=0;j<4;j++) for (int i=0;i<4;i++) for (int k=0;k<4;k++) r[j*4+i]+=a[k*4+i]*b[j*4+k];
+        return r;
+    }
+
     private static float[] BuildMVP(uint w, uint h)
     {
         float f = 1.0f / MathF.Tan(MathF.PI / 8f);
@@ -200,12 +206,24 @@ internal static class Program
         view[0] = view[5] = view[10] = view[15] = 1f;
         view[14] = -2.5f;
 
-        float[] mvp = new float[16];
-        for (int j = 0; j < 4; j++)
-            for (int i = 0; i < 4; i++)
-                for (int k = 0; k < 4; k++)
-                    mvp[j*4+i] += proj[k*4+i] * view[j*4+k];
-        return mvp;
+        float angleY = MathF.PI / 4f;
+        float cy = MathF.Cos(angleY), sy = MathF.Sin(angleY);
+        float[] rotY = new float[16];
+        rotY[0]=cy;  rotY[8]=sy;
+        rotY[5]=1f;
+        rotY[2]=-sy; rotY[10]=cy;
+        rotY[15]=1f;
+
+        float angleX = MathF.PI / 6f;
+        float cx = MathF.Cos(angleX), sx = MathF.Sin(angleX);
+        float[] rotX = new float[16];
+        rotX[0]=1f;
+        rotX[5]=cx;  rotX[9]=-sx;
+        rotX[6]=sx;  rotX[10]=cx;
+        rotX[15]=1f;
+
+        var model = Mul(rotY, rotX);
+        return Mul(Mul(proj, view), model);
     }
 
     private static unsafe void DrawFrame(
