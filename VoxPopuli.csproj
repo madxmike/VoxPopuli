@@ -133,7 +133,7 @@
     </Target>
 
     <!-- Copy all native libs to the dotnet output directory -->
-    <Target Name="CopyNativeLibs" AfterTargets="BuildSDLShadercross" BeforeTargets="Build">
+    <Target Name="CopyNativeLibs" AfterTargets="BuildSDL3;BuildSDLShadercross" BeforeTargets="Build">
         <ItemGroup>
             <NativeLibs Include="$(NativeInstallDir)/bin/*.dll" />    <!-- Windows -->
             <NativeLibs Include="$(NativeInstallDir)/lib/*.so*" />    <!-- Linux -->
