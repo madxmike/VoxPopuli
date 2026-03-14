@@ -193,21 +193,22 @@ internal sealed unsafe class SdlRenderer : IRenderer
         proj[11] = -1f;
         proj[14] = (2f * near * far) / (near - far);
 
-        // System.Numerics uses row-major storage; the shader expects column-major.
+        // View: System.Numerics is row-major; do NOT transpose — CreateLookAt output
+        // maps directly to column-major when used as-is in this multiply convention.
         float[] v =
         [
-            view.M11, view.M21, view.M31, view.M41,
-            view.M12, view.M22, view.M32, view.M42,
-            view.M13, view.M23, view.M33, view.M43,
-            view.M14, view.M24, view.M34, view.M44,
+            view.M11, view.M12, view.M13, view.M14,
+            view.M21, view.M22, view.M23, view.M24,
+            view.M31, view.M32, view.M33, view.M34,
+            view.M41, view.M42, view.M43, view.M44,
         ];
 
         float[] m =
         [
-            model.M11, model.M21, model.M31, model.M41,
-            model.M12, model.M22, model.M32, model.M42,
-            model.M13, model.M23, model.M33, model.M43,
-            model.M14, model.M24, model.M34, model.M44,
+            model.M11, model.M12, model.M13, model.M14,
+            model.M21, model.M22, model.M23, model.M24,
+            model.M31, model.M32, model.M33, model.M34,
+            model.M41, model.M42, model.M43, model.M44,
         ];
 
         return Mul(Mul(proj, v), m);
