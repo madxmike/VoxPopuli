@@ -159,6 +159,9 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
         return SDL3.SDL_CreateGPUTexture(Device, &createInfo);
     }
 
+    internal SDL_GPUShader* LoadShaderInternal(string name, uint numUniformBuffers = 0)
+        => LoadShader(name, numUniformBuffers);
+
     /// <summary>
     /// Loads a pre-compiled shader from <c>Shaders/compiled/{backend}/{name}.hlsl.{ext}</c>.
     /// The backend and entry point name are selected per platform: MSL on macOS uses

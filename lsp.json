@@ -1,0 +1,11 @@
+{
+  "languages": {
+    "csharp": {
+      "name": "roslyn",
+      "command": "/Users/madxmike/Library/Application Support/Zed/extensions/work/csharp/roslyn-5.5.0-2.26103.6/tools/net10.0/osx-arm64/Microsoft.CodeAnalysis.LanguageServer",
+      "args": ["--stdio"],
+      "file_extensions": ["cs"],
+      "project_patterns": ["*.csproj", "*.sln"]
+    }
+  }
+}
