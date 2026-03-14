@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -95,7 +95,7 @@
 
     <!-- Build and install SDL3 into native/install -->
     <Target Name="BuildSDL3"
-            BeforeTargets="BuildSDLShadercross"
+            BeforeTargets="BuildSDLShadercross;Build"
             Condition="!Exists('$(SDL3Lib)')">
         <Exec Command="cmake -S $(SDL3Dir) -B $(SDL3BuildDir) -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(NativeInstallDir) -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0"
               WorkingDirectory="$(MSBuildProjectDirectory)" />
@@ -106,7 +106,7 @@
     <!-- Clone SDL_shadercross and init submodules (SPIRV-Cross, DXC etc) if not already present -->
     <Target Name="CloneSDLShadercross"
             BeforeTargets="BuildSDLShadercross"
-            Condition="!Exists('$(ShadercrossDir)/.git')">
+            Condition="!Exists('$(ShadercrossDir)/.git') And '$(SkipShadercrossBuild)' != 'true'">
         <Exec Command="git clone https://github.com/libsdl-org/SDL_shadercross.git $(ShadercrossDir)" />
         <Exec Command="git -C $(ShadercrossDir) submodule update --init --recursive" />
     </Target>
@@ -114,7 +114,7 @@
     <!-- Build and install SDL_shadercross into native/install -->
     <Target Name="BuildSDLShadercross"
             BeforeTargets="Build"
-            Condition="!Exists('$(SDL3ShadercrossLib)')">
+            Condition="!Exists('$(SDL3ShadercrossLib)') And '$(SkipShadercrossBuild)' != 'true'">
         <Exec Command="cmake -S $(ShadercrossDir) -B $(ShadercrossBuildDir) -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(NativeInstallDir) -DCMAKE_PREFIX_PATH=$(NativeInstallDir) -DSDLSHADERCROSS_VENDORED=ON -DSDLSHADERCROSS_SPIRVCROSS_SHARED=OFF -DSDLSHADERCROSS_SHARED=ON -DSDLSHADERCROSS_STATIC=OFF -DSDLSHADERCROSS_CLI=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DSDLSHADERCROSS_DXC=$(ShadercrossDXC)"
               WorkingDirectory="$(MSBuildProjectDirectory)" />
         <Exec Command="cmake --build $(ShadercrossBuildDir) --config Release --parallel $(NativeBuildJobs)" />

@@ -63,7 +63,7 @@ jobs:
           key: native-${{ matrix.os }}-sdl-${{ hashFiles('native/SDL/**') }}-shadercross-${{ hashFiles('native/SDL_shadercross/**') }}
 
       - name: Publish
-        run: dotnet publish -c Release --self-contained true -r ${{ matrix.rid }} -o publish/ -p:SkipShaderCompilation=true
+        run: dotnet publish -c Release --self-contained true -r ${{ matrix.rid }} -o publish/ -p:SkipShaderCompilation=true -p:SkipShadercrossBuild=true
 
       - name: Zip artifacts (Unix)
         if: matrix.os != 'windows-latest'
