@@ -1,15 +1,16 @@
 namespace VoxPopuli.Game;
 
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
 
 public sealed class VoxelWorld
 {
-    public const int WorldSizeX = 512, WorldSizeY = 128, WorldSizeZ = 512;
+    public const int WorldSizeX = 512, WorldSizeY = 64, WorldSizeZ = 512;
 
     private const int CHUNK_SIZE = 32, PADDED = 34;
-    private const int CHUNKS_X = 16, CHUNKS_Y = 4, CHUNKS_Z = 16;
-    private const int MAX_CHUNKS = 1024; // 16 * 4 * 16
+    private const int CHUNKS_X = 16, CHUNKS_Y = 2, CHUNKS_Z = 16;
+    private const int MAX_CHUNKS = 512; // 16 * 2 * 16
 
     // Cold: voxel data per chunk, padded to 34³ = 39304 bytes
     private readonly byte[][] _chunkVoxels = new byte[MAX_CHUNKS][];
@@ -238,6 +239,13 @@ public sealed class VoxelWorld
             _chunkDirty[i] = false;
 
         return CollectionsMarshal.AsSpan(_dirtyList);
+    }
+
+    internal void SetChunkVoxels(int chunkIndex, ReadOnlySpan<byte> padded)
+    {
+        Debug.Assert(padded.Length == PADDED * PADDED * PADDED);
+        padded.CopyTo(_chunkVoxels[chunkIndex]);
+        _chunkDirty[chunkIndex] = true;
     }
 
     public ReadOnlySpan<byte> GetPaddedChunkVoxels(int chunkIndex)

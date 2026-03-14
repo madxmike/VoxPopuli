@@ -16,7 +16,6 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
 {
     internal SDL_GPUDevice* Device { get; private set; }
     internal SDL_Window* Window { get; private set; }
-    internal SDL_GPUGraphicsPipeline* Pipeline { get; private set; }
     internal SDL_GPUTexture* DepthTexture { get; private set; }
     internal uint DepthWidth { get; private set; }
     internal uint DepthHeight { get; private set; }
@@ -40,10 +39,6 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
 
         if (!SDL3.SDL_ClaimWindowForGPUDevice(Device, Window))
             throw new Exception($"SDL_ClaimWindowForGPUDevice failed: {SDL3.SDL_GetError()}");
-
-        Pipeline = CreateCubePipeline();
-        if (Pipeline == null)
-            throw new Exception($"CreateCubePipeline failed: {SDL3.SDL_GetError()}");
 
         int pw = 0, ph = 0;
         SDL3.SDL_GetWindowSizeInPixels(Window, &pw, &ph);
@@ -69,73 +64,6 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
         DepthTexture = CreateDepthTexture(w, h);
         DepthWidth = w;
         DepthHeight = h;
-    }
-
-    /// <summary>
-    /// Builds the single graphics pipeline used for all cube geometry.
-    /// Vertex layout: float3 position at offset 0, float3 color at offset 12 (pitch = 24 bytes).
-    /// Depth test uses LESS_OR_EQUAL to handle coplanar geometry without z-fighting.
-    /// Shaders are released immediately after pipeline creation — SDL copies what it needs.
-    /// </summary>
-    private SDL_GPUGraphicsPipeline* CreateCubePipeline()
-    {
-        var vert = LoadShader("Cube.vert", numUniformBuffers: 1);
-        var frag = LoadShader("Cube.frag");
-
-        var colorTargetDesc = new SDL_GPUColorTargetDescription
-        {
-            format = SDL3.SDL_GetGPUSwapchainTextureFormat(Device, Window)
-        };
-
-        var vertexBufferDesc = new SDL_GPUVertexBufferDescription
-        {
-            slot = 0,
-            pitch = 24,
-            input_rate = SDL_GPUVertexInputRate.SDL_GPU_VERTEXINPUTRATE_VERTEX,
-            instance_step_rate = 0
-        };
-
-        var vertexAttributes = new SDL_GPUVertexAttribute[]
-        {
-            new() { location = 0, buffer_slot = 0, format = SDL_GPUVertexElementFormat.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, offset = 0 },
-            new() { location = 1, buffer_slot = 0, format = SDL_GPUVertexElementFormat.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, offset = 12 }
-        };
-
-        SDL_GPUGraphicsPipeline* pipeline;
-        fixed (SDL_GPUVertexAttribute* attribsPtr = vertexAttributes)
-        {
-            var createInfo = new SDL_GPUGraphicsPipelineCreateInfo
-            {
-                vertex_shader = vert,
-                fragment_shader = frag,
-                vertex_input_state = new SDL_GPUVertexInputState
-                {
-                    num_vertex_buffers = 1,
-                    vertex_buffer_descriptions = &vertexBufferDesc,
-                    num_vertex_attributes = 2,
-                    vertex_attributes = attribsPtr
-                },
-                depth_stencil_state = new SDL_GPUDepthStencilState
-                {
-                    enable_depth_test = true,
-                    enable_depth_write = true,
-                    compare_op = SDL_GPUCompareOp.SDL_GPU_COMPAREOP_LESS_OR_EQUAL
-                },
-                target_info = new SDL_GPUGraphicsPipelineTargetInfo
-                {
-                    num_color_targets = 1,
-                    color_target_descriptions = &colorTargetDesc,
-                    depth_stencil_format = SDL_GPUTextureFormat.SDL_GPU_TEXTUREFORMAT_D16_UNORM,
-                    has_depth_stencil_target = true
-                },
-                primitive_type = SDL_GPUPrimitiveType.SDL_GPU_PRIMITIVETYPE_TRIANGLELIST
-            };
-            pipeline = SDL3.SDL_CreateGPUGraphicsPipeline(Device, &createInfo);
-        }
-
-        SDL3.SDL_ReleaseGPUShader(Device, vert);
-        SDL3.SDL_ReleaseGPUShader(Device, frag);
-        return pipeline;
     }
 
     /// <summary>
@@ -205,7 +133,6 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
     /// </summary>
     public void Dispose()
     {
-        SDL3.SDL_ReleaseGPUGraphicsPipeline(Device, Pipeline);
         SDL3.SDL_ReleaseGPUTexture(Device, DepthTexture);
         SDL3.SDL_DestroyGPUDevice(Device);
         SDL3.SDL_DestroyWindow(Window);

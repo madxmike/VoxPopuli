@@ -4,25 +4,25 @@ using System.Numerics;
 
 internal sealed class GodCamera
 {
-    public float PanSpeed = 5f;
+    public float PanSpeed = 200f;
     public float ZoomSpeed = 3f;
     public float RotateSpeed = 1.5f;
     public float MouseRotateSpeed = 0.005f;
     public float SmoothFactor = 10f;
     public float MinDistance = 2f;
-    public float MaxDistance = 50f;
+    public float MaxDistance = 1000f;
     public float MinPitch = 0.26f;
     public float MaxPitch = 1.40f;
 
-    private Vector3 _targetGoal = Vector3.Zero;
+    private Vector3 _targetGoal = new Vector3(256f, 32f, 256f);
     private float _yawGoal = 0f;
-    private float _pitchGoal = MathF.PI / 4f;
-    private float _distanceGoal = 10f;
+    private float _pitchGoal = 0.9f;
+    private float _distanceGoal = 150f;
 
-    private Vector3 _targetSmoothed = Vector3.Zero;
+    private Vector3 _targetSmoothed = new Vector3(256f, 32f, 256f);
     private float _yawSmoothed = 0f;
-    private float _pitchSmoothed = MathF.PI / 4f;
-    private float _distanceSmoothed = 10f;
+    private float _pitchSmoothed = 0.9f;
+    private float _distanceSmoothed = 150f;
 
     internal CameraView Update(CameraInput input)
     {

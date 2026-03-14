@@ -8,7 +8,8 @@ internal static class Program
     private static void Main()
     {
         using var device = new SdlGpuDevice("VoxPopuli", 800, 600);
-        using var game = new VoxGame(device);
+        using var renderer = new SdlRenderer(device);
+        using var game = new VoxGame(renderer);
         unsafe
         {
             var run = true;
