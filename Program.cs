@@ -49,9 +49,10 @@ internal static class Program
                 if (keys[(int)SDL_Scancode.SDL_SCANCODE_D]) panX = 1f;
                 if (keys[(int)SDL_Scancode.SDL_SCANCODE_Q]) rotateDelta = -1f;
                 if (keys[(int)SDL_Scancode.SDL_SCANCODE_E]) rotateDelta = 1f;
-
+                bool triggerEdit = keys[(int)SDL_Scancode.SDL_SCANCODE_F];
 
                 var input = new CameraInput(panX, panZ, zoomDelta, rotateDelta, mouseDX, mouseDY, deltaTime);
+                if (triggerEdit) game.TriggerEdit();
                 game.Tick(input);
             }
         }

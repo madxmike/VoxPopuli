@@ -70,13 +70,40 @@ internal sealed unsafe class VoxelRenderer : IDisposable
         SDL3.SDL_ReleaseGPUTransferBuffer(_gpu.Device, xfer);
     }
 
+    internal void UploadSingleChunkOffset(SDL_GPUCommandBuffer* cmd, int chunkIndex)
+    {
+        var entry = new ChunkOffsetEntry { Origin = VoxelWorld.ChunkOrigin(chunkIndex), _pad = 0f };
+        uint entrySize = (uint)Unsafe.SizeOf<ChunkOffsetEntry>();
+        var xferInfo = new SDL_GPUTransferBufferCreateInfo
+        {
+            usage = SDL_GPUTransferBufferUsage.SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+            size  = entrySize
+        };
+        var xfer = SDL3.SDL_CreateGPUTransferBuffer(_gpu.Device, &xferInfo);
+        var map  = SDL3.SDL_MapGPUTransferBuffer(_gpu.Device, xfer, false);
+        Buffer.MemoryCopy(Unsafe.AsPointer(ref entry), (void*)map, entrySize, entrySize);
+        SDL3.SDL_UnmapGPUTransferBuffer(_gpu.Device, xfer);
+        var copyPass = SDL3.SDL_BeginGPUCopyPass(cmd);
+        var src = new SDL_GPUTransferBufferLocation { transfer_buffer = xfer, offset = 0 };
+        var dst = new SDL_GPUBufferRegion { buffer = _chunkOffsetBuffer, offset = (uint)(chunkIndex * 16), size = entrySize };
+        SDL3.SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+        SDL3.SDL_EndGPUCopyPass(copyPass);
+        SDL3.SDL_ReleaseGPUTransferBuffer(_gpu.Device, xfer);
+    }
+
     internal void Render(
         SDL_GPUCommandBuffer* cmd,
         SDL_GPUTexture*       swapchain,
         uint w, uint h,
         VoxelWorld world,
-        CameraView camera)
+        CameraView camera,
+        MeshWorker meshWorker)
     {
+        // Flush completed mesh uploads and update chunk offsets for new slots
+        var updated = meshWorker.FlushUploads(cmd, this);
+        foreach (var ci in updated)
+            UploadSingleChunkOffset(cmd, ci);
+
         // 1. ViewProj
         var view     = Matrix4x4.CreateLookAt(camera.Eye, camera.Target, camera.Up);
         var proj     = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4f, (float)w / h, 0.1f, 2000f);
