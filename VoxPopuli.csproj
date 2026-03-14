@@ -99,7 +99,7 @@
             Condition="!Exists('$(SDL3Lib)')">
         <Exec Command="cmake -S $(SDL3Dir) -B $(SDL3BuildDir) -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(NativeInstallDir) -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0"
               WorkingDirectory="$(MSBuildProjectDirectory)" />
-        <Exec Command="cmake --build $(SDL3BuildDir) --config Release -- -j$(NativeBuildJobs)" />
+        <Exec Command="cmake --build $(SDL3BuildDir) --config Release --parallel $(NativeBuildJobs)" />
         <Exec Command="cmake --install $(SDL3BuildDir) --config Release" />
     </Target>
 
@@ -117,7 +117,7 @@
             Condition="!Exists('$(SDL3ShadercrossLib)')">
         <Exec Command="cmake -S $(ShadercrossDir) -B $(ShadercrossBuildDir) -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(NativeInstallDir) -DCMAKE_PREFIX_PATH=$(NativeInstallDir) -DSDLSHADERCROSS_VENDORED=ON -DSDLSHADERCROSS_SPIRVCROSS_SHARED=OFF -DSDLSHADERCROSS_SHARED=ON -DSDLSHADERCROSS_STATIC=OFF -DSDLSHADERCROSS_CLI=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DSDLSHADERCROSS_DXC=$(ShadercrossDXC)"
               WorkingDirectory="$(MSBuildProjectDirectory)" />
-        <Exec Command="cmake --build $(ShadercrossBuildDir) --config Release -- -j$(NativeBuildJobs)" />
+        <Exec Command="cmake --build $(ShadercrossBuildDir) --config Release --parallel $(NativeBuildJobs)" />
         <Exec Command="cmake --install $(ShadercrossBuildDir) --config Release" />
 
         <!-- Manually copy CLI since it may not be part of the default install -->
