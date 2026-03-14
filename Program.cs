@@ -43,8 +43,8 @@ internal static class Program
                 }
 
                 SDLBool* keys = SDL3.SDL_GetKeyboardState(null);
-                if (keys[(int)SDL_Scancode.SDL_SCANCODE_W]) panZ = -1f;
-                if (keys[(int)SDL_Scancode.SDL_SCANCODE_S]) panZ = 1f;
+                if (keys[(int)SDL_Scancode.SDL_SCANCODE_W]) panZ = 1f;
+                if (keys[(int)SDL_Scancode.SDL_SCANCODE_S]) panZ = -1f;
                 if (keys[(int)SDL_Scancode.SDL_SCANCODE_A]) panX = -1f;
                 if (keys[(int)SDL_Scancode.SDL_SCANCODE_D]) panX = 1f;
                 if (keys[(int)SDL_Scancode.SDL_SCANCODE_Q]) rotateDelta = -1f;
