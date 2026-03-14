@@ -33,7 +33,7 @@ jobs:
 
       - name: Install prerequisites (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get install -y ninja-build libvulkan-dev libx11-dev libxext-dev libwayland-dev libxkbcommon-dev
+        run: sudo apt-get install -y ninja-build libvulkan-dev libx11-dev libxext-dev libwayland-dev libxkbcommon-dev libxcursor-dev libxi-dev libxfixes-dev libxrandr-dev libxss-dev libxt-dev libxxf86vm-dev libasound2-dev libpulse-dev
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
