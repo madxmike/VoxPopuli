@@ -37,6 +37,9 @@ internal static class Program
                 {
                     if (@event.type == (uint)SDL_EventType.SDL_EVENT_WINDOW_CLOSE_REQUESTED)
                         run = false;
+                    else if (@event.type == (uint)SDL_EventType.SDL_EVENT_KEY_DOWN &&
+                             @event.key.scancode == SDL_Scancode.SDL_SCANCODE_P)
+                        game.ToggleWireframe();
                     else if (@event.type == (uint)SDL_EventType.SDL_EVENT_MOUSE_WHEEL)
                         zoomDelta += @event.wheel.y;
                     else if (@event.type == (uint)SDL_EventType.SDL_EVENT_MOUSE_MOTION)

@@ -15,10 +15,10 @@ internal sealed unsafe class SdlRenderer : IRenderer
     internal SdlRenderer(SdlGpuDevice gpu, ReadOnlySpan<Vector4> colorTable)
     {
         _gpu = gpu;
-        _subRenderers.Add(new VoxelChunkRenderer(gpu, colorTable, new CpuChunkMeshBuilder()));
+        _subRenderers.Add(new VoxelChunkRenderer(gpu, colorTable, new GreedyChunkMeshBuilder()));
     }
 
-    public void DrawFrame(CameraView view, VoxelWorld world)
+    public void DrawFrame(CameraView view, VoxelWorld world, bool wireframe = false)
     {
         var cmd = _gpu.AcquireCommandBuffer();
         SDL_GPUTexture* swapchain; uint sw, sh;
@@ -42,7 +42,8 @@ internal sealed unsafe class SdlRenderer : IRenderer
             Height        = sh,
             RenderPass    = null,
             CommandBuffer = cmd,
-            World         = world
+            World         = world,
+            Wireframe     = wireframe
         };
 
         foreach (var sub in _subRenderers)

@@ -5,5 +5,5 @@ using VoxPopuli.Game;
 
 internal interface IRenderer : IDisposable
 {
-    void DrawFrame(CameraView camera, VoxelWorld world);
+    void DrawFrame(CameraView camera, VoxelWorld world, bool wireframe = false);
 }

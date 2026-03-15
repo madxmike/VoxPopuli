@@ -7,6 +7,7 @@ internal sealed class VoxGame : IDisposable
     private readonly IRenderer _renderer;
     private readonly VoxelWorld _world;
     private readonly GodCamera _camera = new();
+    private bool _wireframe;
 
     internal VoxGame(IRenderer renderer)
     {
@@ -20,10 +21,12 @@ internal sealed class VoxGame : IDisposable
         _world.SetBlock(240, 0, 240, 32, 32, 32, 0);
     }
 
+    internal void ToggleWireframe() => _wireframe = !_wireframe;
+
     internal void Tick(CameraInput input)
     {
         var view = _camera.Update(input);
-        _renderer.DrawFrame(view, _world);
+        _renderer.DrawFrame(view, _world, _wireframe);
     }
 
     public void Dispose() { }

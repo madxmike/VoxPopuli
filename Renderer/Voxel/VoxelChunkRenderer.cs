@@ -17,6 +17,7 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
     private SDL_GPUBuffer* _colorTableBuffer;
     private SDL_GPUTransferBuffer* _transferBuffer;
     private SDL_GPUGraphicsPipeline* _pipeline;
+    private SDL_GPUGraphicsPipeline* _wireframePipeline;
     private bool _initialized;
 
     internal VoxelChunkRenderer(SdlGpuDevice gpu, ReadOnlySpan<Vector4> colorTable, IChunkMeshBuilder meshBuilder)
@@ -144,6 +145,11 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
         if (_pipeline == null)
             throw new Exception(SDL3.SDL_GetError());
 
+        pipelineInfo.rasterizer_state.fill_mode = SDL_GPUFillMode.SDL_GPU_FILLMODE_LINE;
+        _wireframePipeline = SDL3.SDL_CreateGPUGraphicsPipeline(gpu.Device, &pipelineInfo);
+        if (_wireframePipeline == null)
+            throw new Exception(SDL3.SDL_GetError());
+
         SDL3.SDL_ReleaseGPUShader(gpu.Device, vert);
         SDL3.SDL_ReleaseGPUShader(gpu.Device, frag);
     }
@@ -215,7 +221,7 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
         var viewProj = frame.ViewProj;
         SDL3.SDL_PushGPUVertexUniformData(cmd, 0, (IntPtr)(&viewProj), (uint)sizeof(Matrix4x4));
 
-        SDL3.SDL_BindGPUGraphicsPipeline(pass, _pipeline);
+        SDL3.SDL_BindGPUGraphicsPipeline(pass, frame.Wireframe ? _wireframePipeline : _pipeline);
 
         var colorBuf = _colorTableBuffer;
         SDL3.SDL_BindGPUVertexStorageBuffers(pass, 0, &colorBuf, 1);
@@ -240,5 +246,6 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
         if (_colorTableBuffer != null) SDL3.SDL_ReleaseGPUBuffer(_gpu.Device, _colorTableBuffer);
         if (_transferBuffer   != null) SDL3.SDL_ReleaseGPUTransferBuffer(_gpu.Device, _transferBuffer);
         if (_pipeline         != null) SDL3.SDL_ReleaseGPUGraphicsPipeline(_gpu.Device, _pipeline);
+        if (_wireframePipeline != null) SDL3.SDL_ReleaseGPUGraphicsPipeline(_gpu.Device, _wireframePipeline);
     }
 }
