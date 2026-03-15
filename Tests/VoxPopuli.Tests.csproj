@@ -20,9 +20,10 @@
     <ItemGroup>
         <Compile Include="../Game/Chunk.cs" />
         <Compile Include="../Game/VoxelWorld.cs" />
-        <Compile Include="../Renderer/IChunkMeshBuilder.cs" />
-        <Compile Include="../Renderer/VoxelVertex.cs" />
-        <Compile Include="../Renderer/CpuChunkMeshBuilder.cs" />
+        <Compile Include="../Renderer/Voxel/IChunkMeshBuilder.cs" />
+        <Compile Include="../Renderer/Voxel/VoxelVertex.cs" />
+        <Compile Include="../Renderer/Voxel/CpuChunkMeshBuilder.cs" />
+        <Compile Include="../Renderer/Voxel/GreedyChunkMeshBuilder.cs" />
     </ItemGroup>
 
 </Project>

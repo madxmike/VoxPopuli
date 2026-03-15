@@ -36,14 +36,14 @@ internal sealed unsafe class SdlRenderer : IRenderer
         var view_matrix = Matrix4x4.CreateLookAt(view.Eye, view.Target, view.Up);
         var frame = new RenderFrame
         {
-            ViewProj      = view_matrix * _proj,
-            View          = view_matrix,
-            Width         = sw,
-            Height        = sh,
-            RenderPass    = null,
+            ViewProj = view_matrix * _proj,
+            View = view_matrix,
+            Width = sw,
+            Height = sh,
+            RenderPass = null,
             CommandBuffer = cmd,
-            World         = world,
-            Wireframe     = wireframe
+            World = world,
+            Wireframe = wireframe
         };
 
         foreach (var sub in _subRenderers)
@@ -51,21 +51,21 @@ internal sealed unsafe class SdlRenderer : IRenderer
 
         var colorTarget = new SDL_GPUColorTargetInfo
         {
-            texture    = swapchain,
-            load_op    = SDL_GPULoadOp.SDL_GPU_LOADOP_CLEAR,
-            store_op   = SDL_GPUStoreOp.SDL_GPU_STOREOP_STORE,
+            texture = swapchain,
+            load_op = SDL_GPULoadOp.SDL_GPU_LOADOP_CLEAR,
+            store_op = SDL_GPUStoreOp.SDL_GPU_STOREOP_STORE,
             clear_color = new SDL_FColor { r = 0f, g = 0f, b = 0f, a = 1f }
         };
         var depthTarget = new SDL_GPUDepthStencilTargetInfo
         {
-            texture             = _gpu.DepthTexture,
-            clear_depth         = 1.0f,
-            load_op             = SDL_GPULoadOp.SDL_GPU_LOADOP_CLEAR,
-            store_op            = SDL_GPUStoreOp.SDL_GPU_STOREOP_DONT_CARE,
-            stencil_load_op     = SDL_GPULoadOp.SDL_GPU_LOADOP_DONT_CARE,
+            texture = _gpu.DepthTexture,
+            clear_depth = 1.0f,
+            load_op = SDL_GPULoadOp.SDL_GPU_LOADOP_CLEAR,
+            store_op = SDL_GPUStoreOp.SDL_GPU_STOREOP_DONT_CARE,
+            stencil_load_op = SDL_GPULoadOp.SDL_GPU_LOADOP_DONT_CARE,
 
-            stencil_store_op    = SDL_GPUStoreOp.SDL_GPU_STOREOP_DONT_CARE,
-            cycle               = true
+            stencil_store_op = SDL_GPUStoreOp.SDL_GPU_STOREOP_DONT_CARE,
+            cycle = true
         };
 
         var pass = SDL3.SDL_BeginGPURenderPass(cmd, &colorTarget, 1, &depthTarget);

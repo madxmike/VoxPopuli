@@ -163,10 +163,23 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
             for (int i = 0; i < VoxelWorld.MAX_CHUNKS; i++)
                 BuildAndUploadChunk(cmd, frame.World, i);
             _initialized = true;
+            LogFaceCount();
         }
 
+        bool dirty = false;
         foreach (int i in frame.World.DrainDirtyChunks())
+        {
             BuildAndUploadChunk(cmd, frame.World, i);
+            dirty = true;
+        }
+        if (dirty) LogFaceCount();
+    }
+
+    private void LogFaceCount()
+    {
+        uint totalVerts = 0;
+        foreach (uint v in _vertexCounts) totalVerts += v;
+        Console.WriteLine($"[VoxelChunkRenderer] {totalVerts / 3} triangles ({totalVerts / 6} quads)");
     }
 
     private void BuildAndUploadChunk(SDL_GPUCommandBuffer* cmd, VoxelWorld world, int i)
