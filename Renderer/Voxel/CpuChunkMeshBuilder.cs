@@ -23,11 +23,13 @@ internal sealed class CpuChunkMeshBuilder : IChunkMeshBuilder
         int ox = (int)origin.X, oy = (int)origin.Y, oz = (int)origin.Z;
         int count = 0;
 
+        var chunk = world.GetChunk(chunkIndex);
+
         for (int z = 0; z < Chunk.SIZE; z++)
         for (int y = 0; y < Chunk.SIZE; y++)
         for (int x = 0; x < Chunk.SIZE; x++)
         {
-            byte typeId = world.Chunks[chunkIndex].Get(x, y, z);
+            byte typeId = chunk.Get(x, y, z);
             if (typeId == 0) continue;
 
             var worldBase = new Vector3(ox + x, oy + y, oz + z);

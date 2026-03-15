@@ -46,12 +46,8 @@ internal static class TerrainGenerator
     {
         for (int i = 0; i < VoxelWorld.MAX_CHUNKS; i++)
         {
-            int cx = i % 16;
-            int cy = (i / 16) % 2;
-            int cz = i / 32;
-
-            world.Chunks[i].MutableData.Clear();
-            GenerateChunk(cx, cy, cz, seed, world.Chunks[i]);
+            int cx = VoxelWorld.ChunkIndexToCoords(i, out int cy, out int cz);
+            GenerateChunk(cx, cy, cz, seed, world.GetChunk(i));
         }
     }
 }

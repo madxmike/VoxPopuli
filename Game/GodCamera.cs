@@ -14,12 +14,12 @@ internal sealed class GodCamera
     public float MinPitch = 0.26f;
     public float MaxPitch = 1.40f;
 
-    private Vector3 _targetGoal = new Vector3(256f, 32f, 256f);
+    private Vector3 _targetGoal = new Vector3(384f, 32f, 384f);
     private float _yawGoal = 0f;
     private float _pitchGoal = 0.9f;
-    private float _distanceGoal = 150f;
+    private float _distanceGoal = 200f;
 
-    private Vector3 _targetSmoothed = new Vector3(256f, 32f, 256f);
+    private Vector3 _targetSmoothed = new Vector3(384f, 32f, 384f);
     private float _yawSmoothed = 0f;
     private float _pitchSmoothed = 0.9f;
     private float _distanceSmoothed = 150f;
