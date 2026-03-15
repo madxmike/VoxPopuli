@@ -47,7 +47,9 @@ internal sealed unsafe class SdlRenderer : IRenderer
         };
 
         foreach (var sub in _subRenderers)
+        {
             sub.PrepareFrame(cmd, in frame);
+        }
 
         var colorTarget = new SDL_GPUColorTargetInfo
         {
@@ -72,7 +74,9 @@ internal sealed unsafe class SdlRenderer : IRenderer
         frame = frame with { RenderPass = pass };
 
         foreach (var sub in _subRenderers)
+        {
             sub.Draw(in frame);
+        }
 
         SDL3.SDL_EndGPURenderPass(pass);
         SDL3.SDL_SubmitGPUCommandBuffer(cmd);
@@ -81,6 +85,8 @@ internal sealed unsafe class SdlRenderer : IRenderer
     public void Dispose()
     {
         foreach (var sub in _subRenderers)
+        {
             sub.Dispose();
+        }
     }
 }

@@ -46,11 +46,13 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
         var chunk = world.GetChunk(chunkIndex);
 
         foreach (var face in Faces)
+        {
             for (int depth = 0; depth < Chunk.SIZE; depth++)
             {
                 BuildMask(world, chunk, ox, oy, oz, face, depth);
                 vertexCount += EmitQuads(output, vertexCount, ox, oy, oz, face, depth);
             }
+        }
 
         return vertexCount;
     }
@@ -70,19 +72,26 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
         Array.Clear(_mask, 0, size * size);
 
         for (int v = 0; v < size; v++)
-        for (int u = 0; u < size; u++)
         {
-            _localCoords[normalAxis] = depth; _localCoords[uAxis] = u; _localCoords[vAxis] = v;
-            byte typeId = chunk.Get(_localCoords[0], _localCoords[1], _localCoords[2]);
-            if (typeId == 0) continue;
+            for (int u = 0; u < size; u++)
+            {
+                _localCoords[normalAxis] = depth; _localCoords[uAxis] = u; _localCoords[vAxis] = v;
+                byte typeId = chunk.Get(_localCoords[0], _localCoords[1], _localCoords[2]);
+                if (typeId == 0)
+                {
+                    continue;
+                }
 
-            _localCoords[normalAxis] = depth + normalSign;
-            bool neighborAir = _localCoords[normalAxis] < 0 || _localCoords[normalAxis] >= size
-                ? world.GetVoxel(ox + _localCoords[0], oy + _localCoords[1], oz + _localCoords[2]) == 0
-                : chunk.Get(_localCoords[0], _localCoords[1], _localCoords[2]) == 0;
+                _localCoords[normalAxis] = depth + normalSign;
+                bool neighborAir = _localCoords[normalAxis] < 0 || _localCoords[normalAxis] >= size
+                    ? world.GetVoxel(ox + _localCoords[0], oy + _localCoords[1], oz + _localCoords[2]) == 0
+                    : chunk.Get(_localCoords[0], _localCoords[1], _localCoords[2]) == 0;
 
-            if (neighborAir)
-                _mask[u + v * size] = typeId;
+                if (neighborAir)
+                {
+                    _mask[u + v * size] = typeId;
+                }
+            }
         }
     }
 
@@ -99,25 +108,30 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
         int vertexCount = 0;
 
         for (int v = 0; v < size; v++)
-        for (int u = 0; u < size; u++)
         {
-            int typeId = _mask[u + v * size];
-            if (typeId == 0) continue;
+            for (int u = 0; u < size; u++)
+            {
+                int typeId = _mask[u + v * size];
+                if (typeId == 0)
+                {
+                    continue;
+                }
 
-            int width  = ExpandWidth(u, v, typeId);
-            int height = ExpandHeight(u, v, typeId, width);
+                int width  = ExpandWidth(u, v, typeId);
+                int height = ExpandHeight(u, v, typeId, width);
 
-            // For negative-sign axes the quad corner starts at the far edge of the rectangle
-            // so that du/dv point in the correct winding direction.
-            _localCoords[normalAxis] = depth + planeOffset;
-            _localCoords[uAxis] = uSign > 0 ? u : u + width;
-            _localCoords[vAxis] = vSign > 0 ? v : v + height;
-            var quadOrigin = new Vector3(ox + _localCoords[0], oy + _localCoords[1], oz + _localCoords[2]);
-            var du = SetAxis(Vector3.Zero, uAxis, uSign * width);
-            var dv = SetAxis(Vector3.Zero, vAxis, vSign * height);
+                // For negative-sign axes the quad corner starts at the far edge of the rectangle
+                // so that du/dv point in the correct winding direction.
+                _localCoords[normalAxis] = depth + planeOffset;
+                _localCoords[uAxis] = uSign > 0 ? u : u + width;
+                _localCoords[vAxis] = vSign > 0 ? v : v + height;
+                var quadOrigin = new Vector3(ox + _localCoords[0], oy + _localCoords[1], oz + _localCoords[2]);
+                var du = SetAxis(Vector3.Zero, uAxis, uSign * width);
+                var dv = SetAxis(Vector3.Zero, vAxis, vSign * height);
 
-            vertexCount += EmitQuad(output, offset + vertexCount, quadOrigin, du, dv, (uint)typeId);
-            ClearMask(u, v, width, height);
+                vertexCount += EmitQuad(output, offset + vertexCount, quadOrigin, du, dv, (uint)typeId);
+                ClearMask(u, v, width, height);
+            }
         }
 
         return vertexCount;
@@ -128,7 +142,10 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
     {
         int size = Chunk.SIZE;
         int width = 1;
-        while (u + width < size && _mask[(u + width) + v * size] == typeId) width++;
+        while (u + width < size && _mask[(u + width) + v * size] == typeId)
+        {
+            width++;
+        }
         return width;
     }
 
@@ -140,7 +157,12 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
         while (v + height < size)
         {
             for (int k = 0; k < width; k++)
-                if (_mask[(u + k) + (v + height) * size] != typeId) return height;
+            {
+                if (_mask[(u + k) + (v + height) * size] != typeId)
+                {
+                    return height;
+                }
+            }
             height++;
         }
         return height;
@@ -168,8 +190,12 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
     {
         int size = Chunk.SIZE;
         for (int dv = 0; dv < height; dv++)
-        for (int du = 0; du < width; du++)
-            _mask[(u + du) + (v + dv) * size] = 0;
+        {
+            for (int du = 0; du < width; du++)
+            {
+                _mask[(u + du) + (v + dv) * size] = 0;
+            }
+        }
     }
 
     private static Vector3 SetAxis(Vector3 vec, int axis, float value) => axis switch

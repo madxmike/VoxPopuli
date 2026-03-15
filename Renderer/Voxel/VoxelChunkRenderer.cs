@@ -35,7 +35,9 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
         };
         _colorTableBuffer = SDL3.SDL_CreateGPUBuffer(gpu.Device, &colorBufInfo);
         if (_colorTableBuffer == null)
+        {
             throw new Exception(SDL3.SDL_GetError());
+        }
 
         // Upload color table via one-shot copy pass with a temp transfer buffer
         var tempTransferInfo = new SDL_GPUTransferBufferCreateInfo
@@ -45,15 +47,21 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
         };
         var tempTransfer = SDL3.SDL_CreateGPUTransferBuffer(gpu.Device, &tempTransferInfo);
         if (tempTransfer == null)
+        {
             throw new Exception(SDL3.SDL_GetError());
+        }
 
         var mapped = (Vector4*)SDL3.SDL_MapGPUTransferBuffer(gpu.Device, tempTransfer, false);
         // Copy input span (may be shorter than 256); zero-pad the rest
         int copyCount = Math.Min(colorTable.Length, 256);
         for (int i = 0; i < copyCount; i++)
+        {
             mapped[i] = colorTable[i];
+        }
         for (int i = copyCount; i < 256; i++)
+        {
             mapped[i] = Vector4.Zero;
+        }
         SDL3.SDL_UnmapGPUTransferBuffer(gpu.Device, tempTransfer);
 
         var uploadCmd = gpu.AcquireCommandBuffer();
@@ -73,13 +81,21 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
         };
         _transferBuffer = SDL3.SDL_CreateGPUTransferBuffer(gpu.Device, &transferInfo);
         if (_transferBuffer == null)
+        {
             throw new Exception(SDL3.SDL_GetError());
+        }
 
         // Load shaders: vert needs 1 uniform buffer (ViewProj) + 1 storage buffer (colorTable)
         var vert = gpu.LoadShaderInternal("Voxel.vert", numUniformBuffers: 1, numReadOnlyStorageBuffers: 1);
-        if (vert == null) throw new Exception(SDL3.SDL_GetError());
+        if (vert == null)
+        {
+            throw new Exception(SDL3.SDL_GetError());
+        }
         var frag = gpu.LoadShaderInternal("Voxel.frag", numUniformBuffers: 0, numReadOnlyStorageBuffers: 0);
-        if (frag == null) throw new Exception(SDL3.SDL_GetError());
+        if (frag == null)
+        {
+            throw new Exception(SDL3.SDL_GetError());
+        }
 
         // Create graphics pipeline
         var bufDesc = new SDL_GPUVertexBufferDescription
@@ -143,12 +159,16 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
 
         _pipeline = SDL3.SDL_CreateGPUGraphicsPipeline(gpu.Device, &pipelineInfo);
         if (_pipeline == null)
+        {
             throw new Exception(SDL3.SDL_GetError());
+        }
 
         pipelineInfo.rasterizer_state.fill_mode = SDL_GPUFillMode.SDL_GPU_FILLMODE_LINE;
         _wireframePipeline = SDL3.SDL_CreateGPUGraphicsPipeline(gpu.Device, &pipelineInfo);
         if (_wireframePipeline == null)
+        {
             throw new Exception(SDL3.SDL_GetError());
+        }
 
         SDL3.SDL_ReleaseGPUShader(gpu.Device, vert);
         SDL3.SDL_ReleaseGPUShader(gpu.Device, frag);
@@ -156,12 +176,17 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
 
     public unsafe void PrepareFrame(SDL_GPUCommandBuffer* cmd, in RenderFrame frame)
     {
-        if (frame.World == null) return;
+        if (frame.World == null)
+        {
+            return;
+        }
 
         if (!_initialized)
         {
             for (int i = 0; i < VoxelWorld.MAX_CHUNKS; i++)
+            {
                 BuildAndUploadChunk(cmd, frame.World, i);
+            }
             _initialized = true;
             LogFaceCount();
         }
@@ -172,13 +197,19 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
             BuildAndUploadChunk(cmd, frame.World, i);
             dirty = true;
         }
-        if (dirty) LogFaceCount();
+        if (dirty)
+        {
+            LogFaceCount();
+        }
     }
 
     private void LogFaceCount()
     {
         uint totalVerts = 0;
-        foreach (uint v in _vertexCounts) totalVerts += v;
+        foreach (uint v in _vertexCounts)
+        {
+            totalVerts += v;
+        }
         Console.WriteLine($"[VoxelChunkRenderer] {totalVerts / 3} triangles ({totalVerts / 6} quads)");
     }
 
@@ -199,7 +230,9 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
 
         // Release old buffer and create new one sized to this chunk's vertex count
         if (_vertexBuffers[i] != null)
+        {
             SDL3.SDL_ReleaseGPUBuffer(_gpu.Device, _vertexBuffers[i]);
+        }
 
         var bufInfo = new SDL_GPUBufferCreateInfo
         {
@@ -241,7 +274,10 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
 
         for (int i = 0; i < VoxelWorld.MAX_CHUNKS; i++)
         {
-            if (_vertexCounts[i] == 0) continue;
+            if (_vertexCounts[i] == 0)
+            {
+                continue;
+            }
 
             var binding = new SDL_GPUBufferBinding { buffer = _vertexBuffers[i], offset = 0 };
             SDL3.SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
@@ -254,11 +290,25 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
         for (int i = 0; i < VoxelWorld.MAX_CHUNKS; i++)
         {
             if (_vertexBuffers[i] != null)
+            {
                 SDL3.SDL_ReleaseGPUBuffer(_gpu.Device, _vertexBuffers[i]);
+            }
         }
-        if (_colorTableBuffer != null) SDL3.SDL_ReleaseGPUBuffer(_gpu.Device, _colorTableBuffer);
-        if (_transferBuffer   != null) SDL3.SDL_ReleaseGPUTransferBuffer(_gpu.Device, _transferBuffer);
-        if (_pipeline         != null) SDL3.SDL_ReleaseGPUGraphicsPipeline(_gpu.Device, _pipeline);
-        if (_wireframePipeline != null) SDL3.SDL_ReleaseGPUGraphicsPipeline(_gpu.Device, _wireframePipeline);
+        if (_colorTableBuffer != null)
+        {
+            SDL3.SDL_ReleaseGPUBuffer(_gpu.Device, _colorTableBuffer);
+        }
+        if (_transferBuffer != null)
+        {
+            SDL3.SDL_ReleaseGPUTransferBuffer(_gpu.Device, _transferBuffer);
+        }
+        if (_pipeline != null)
+        {
+            SDL3.SDL_ReleaseGPUGraphicsPipeline(_gpu.Device, _pipeline);
+        }
+        if (_wireframePipeline != null)
+        {
+            SDL3.SDL_ReleaseGPUGraphicsPipeline(_gpu.Device, _wireframePipeline);
+        }
     }
 }

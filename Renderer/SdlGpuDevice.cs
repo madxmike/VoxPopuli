@@ -31,14 +31,20 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
 
         Window = SDL3.SDL_CreateWindow(title, width, height, SDL_WindowFlags.SDL_WINDOW_RESIZABLE);
         if (Window == null)
+        {
             throw new Exception($"SDL_CreateWindow failed: {SDL3.SDL_GetError()}");
+        }
 
         Device = SDL3.SDL_CreateGPUDevice(SDL_GPUShaderFormat.SDL_GPU_SHADERFORMAT_MSL, false, (byte*)null);
         if (Device == null)
+        {
             throw new Exception($"SDL_CreateGPUDevice failed: {SDL3.SDL_GetError()}");
+        }
 
         if (!SDL3.SDL_ClaimWindowForGPUDevice(Device, Window))
+        {
             throw new Exception($"SDL_ClaimWindowForGPUDevice failed: {SDL3.SDL_GetError()}");
+        }
 
         int pw = 0, ph = 0;
         SDL3.SDL_GetWindowSizeInPixels(Window, &pw, &ph);
@@ -46,7 +52,9 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
         DepthHeight = (uint)ph;
         DepthTexture = CreateDepthTexture(DepthWidth, DepthHeight);
         if (DepthTexture == null)
+        {
             throw new Exception($"CreateDepthTexture failed: {SDL3.SDL_GetError()}");
+        }
     }
 
     internal SDL_GPUCommandBuffer* AcquireCommandBuffer() =>
@@ -59,7 +67,10 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
     /// </summary>
     internal void ResizeDepthTextureIfNeeded(uint w, uint h)
     {
-        if (w == DepthWidth && h == DepthHeight) return;
+        if (w == DepthWidth && h == DepthHeight)
+        {
+            return;
+        }
         SDL3.SDL_ReleaseGPUTexture(Device, DepthTexture);
         DepthTexture = CreateDepthTexture(w, h);
         DepthWidth = w;
@@ -127,7 +138,9 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
             };
             var pipeline = SDL3.SDL_CreateGPUComputePipeline(Device, &info);
             if (pipeline == null)
+            {
                 throw new Exception($"SDL_CreateGPUComputePipeline failed: {SDL3.SDL_GetError()}");
+            }
             return pipeline;
         }
     }

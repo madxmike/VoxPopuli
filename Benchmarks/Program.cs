@@ -24,7 +24,9 @@ public class MeshBuilderBenchmarks
     {
         int total = 0;
         for (int i = 0; i < VoxelWorld.MAX_CHUNKS; i++)
+        {
             total += _greedy.Build(_world, i, _output);
+        }
         return total;
     }
 }

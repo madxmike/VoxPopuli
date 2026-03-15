@@ -32,7 +32,9 @@ public sealed class GreedyChunkMeshBuilderTests
         var world = new VoxelWorld();
         world.SetVoxel(5, 5, 5, 1);
         foreach (var (dx, dy, dz) in new[] { (1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(0,0,1),(0,0,-1) })
+        {
             world.SetVoxel(5+dx, 5+dy, 5+dz, 1);
+        }
         Assert.Equal(180, _greedy.Build(world, 0, _output));
     }
 
@@ -65,7 +67,9 @@ public sealed class GreedyChunkMeshBuilderTests
         int count = _greedy.Build(world, ci, _output);
         Assert.True(count > 0);
         for (int i = 0; i < count; i++)
+        {
             Assert.True(_output[i].Position.X >= 32f);
+        }
     }
 
     internal static HashSet<string> ToTriangleSet(ReadOnlySpan<VoxelVertex> verts)

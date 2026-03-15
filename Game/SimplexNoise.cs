@@ -26,7 +26,10 @@ internal static class SimplexNoise
             222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180,
         ];
         _perm = new int[512];
-        for (int i = 0; i < 512; i++) _perm[i] = p[i & 255];
+        for (int i = 0; i < 512; i++)
+        {
+            _perm[i] = p[i & 255];
+        }
     }
 
     private static float Grad(int hash, float x, float y)

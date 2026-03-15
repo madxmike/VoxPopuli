@@ -54,7 +54,9 @@ public sealed class VoxelWorld
     public byte GetVoxel(int x, int y, int z)
     {
         if ((uint)x >= WorldSizeX || (uint)y >= WorldSizeY || (uint)z >= WorldSizeZ)
+        {
             return 0;
+        }
         int cx = x / CHUNK_SIZE, cy = y / CHUNK_SIZE, cz = z / CHUNK_SIZE;
         int ci = ChunkIndex(cx, cy, cz);
         return _voxels[ci * Chunk.VOLUME + Chunk.Index(x % CHUNK_SIZE, y % CHUNK_SIZE, z % CHUNK_SIZE)];
@@ -63,7 +65,9 @@ public sealed class VoxelWorld
     public void SetVoxel(int x, int y, int z, byte typeId)
     {
         if ((uint)x >= WorldSizeX || (uint)y >= WorldSizeY || (uint)z >= WorldSizeZ)
+        {
             return;
+        }
         int cx = x / CHUNK_SIZE, cy = y / CHUNK_SIZE, cz = z / CHUNK_SIZE;
         int ci = ChunkIndex(cx, cy, cz);
         _voxels[ci * Chunk.VOLUME + Chunk.Index(x % CHUNK_SIZE, y % CHUNK_SIZE, z % CHUNK_SIZE)] = typeId;
@@ -80,13 +84,17 @@ public sealed class VoxelWorld
         int z2 = Math.Clamp(z + sizeZ - 1, 0, WorldSizeZ - 1);
 
         for (int vx = x1; vx <= x2; vx++)
-        for (int vy = y1; vy <= y2; vy++)
-        for (int vz = z1; vz <= z2; vz++)
         {
-            int cx = vx / CHUNK_SIZE, cy = vy / CHUNK_SIZE, cz = vz / CHUNK_SIZE;
-            int ci = ChunkIndex(cx, cy, cz);
-            _voxels[ci * Chunk.VOLUME + Chunk.Index(vx % CHUNK_SIZE, vy % CHUNK_SIZE, vz % CHUNK_SIZE)] = typeId;
-            _dirty[ci] = true;
+            for (int vy = y1; vy <= y2; vy++)
+            {
+                for (int vz = z1; vz <= z2; vz++)
+                {
+                    int cx = vx / CHUNK_SIZE, cy = vy / CHUNK_SIZE, cz = vz / CHUNK_SIZE;
+                    int ci = ChunkIndex(cx, cy, cz);
+                    _voxels[ci * Chunk.VOLUME + Chunk.Index(vx % CHUNK_SIZE, vy % CHUNK_SIZE, vz % CHUNK_SIZE)] = typeId;
+                    _dirty[ci] = true;
+                }
+            }
         }
     }
 
@@ -94,9 +102,16 @@ public sealed class VoxelWorld
     {
         _dirtyList.Clear();
         for (int i = 0; i < MAX_CHUNKS; i++)
-            if (_dirty[i]) _dirtyList.Add(i);
+        {
+            if (_dirty[i])
+            {
+                _dirtyList.Add(i);
+            }
+        }
         for (int i = 0; i < MAX_CHUNKS; i++)
+        {
             _dirty[i] = false;
+        }
         return CollectionsMarshal.AsSpan(_dirtyList);
     }
 }

@@ -12,7 +12,9 @@ internal static class Program
         var colorTable = new Vector4[256];
         colorTable[0] = Vector4.Zero;
         for (int i = 1; i < 256; i++)
+        {
             colorTable[i] = new Vector4((i & 1) * 0.8f + 0.1f, ((i >> 1) & 1) * 0.8f + 0.1f, ((i >> 2) & 1) * 0.8f + 0.1f, 1f);
+        }
 
         using var device = new SdlGpuDevice("VoxPopuli", 800, 600);
         using var renderer = new SdlRenderer(device, colorTable);
@@ -36,12 +38,18 @@ internal static class Program
                 while (SDL3.SDL_PollEvent(&@event))
                 {
                     if (@event.type == (uint)SDL_EventType.SDL_EVENT_WINDOW_CLOSE_REQUESTED)
+                    {
                         run = false;
+                    }
                     else if (@event.type == (uint)SDL_EventType.SDL_EVENT_KEY_DOWN &&
                              @event.key.scancode == SDL_Scancode.SDL_SCANCODE_P)
+                    {
                         game.ToggleWireframe();
+                    }
                     else if (@event.type == (uint)SDL_EventType.SDL_EVENT_MOUSE_WHEEL)
+                    {
                         zoomDelta += @event.wheel.y;
+                    }
                     else if (@event.type == (uint)SDL_EventType.SDL_EVENT_MOUSE_MOTION)
                     {
                         var buttons = SDL3.SDL_GetMouseState(null, null);
@@ -54,16 +62,19 @@ internal static class Program
                 }
 
                 SDLBool* keys = SDL3.SDL_GetKeyboardState(null);
-                if (keys[(int)SDL_Scancode.SDL_SCANCODE_W]) panZ = 1f;
-                if (keys[(int)SDL_Scancode.SDL_SCANCODE_S]) panZ = -1f;
-                if (keys[(int)SDL_Scancode.SDL_SCANCODE_A]) panX = -1f;
-                if (keys[(int)SDL_Scancode.SDL_SCANCODE_D]) panX = 1f;
-                if (keys[(int)SDL_Scancode.SDL_SCANCODE_Q]) rotateDelta = -1f;
-                if (keys[(int)SDL_Scancode.SDL_SCANCODE_E]) rotateDelta = 1f;
+                if (keys[(int)SDL_Scancode.SDL_SCANCODE_W]) { panZ = 1f; }
+                if (keys[(int)SDL_Scancode.SDL_SCANCODE_S]) { panZ = -1f; }
+                if (keys[(int)SDL_Scancode.SDL_SCANCODE_A]) { panX = -1f; }
+                if (keys[(int)SDL_Scancode.SDL_SCANCODE_D]) { panX = 1f; }
+                if (keys[(int)SDL_Scancode.SDL_SCANCODE_Q]) { rotateDelta = -1f; }
+                if (keys[(int)SDL_Scancode.SDL_SCANCODE_E]) { rotateDelta = 1f; }
                 bool triggerEdit = keys[(int)SDL_Scancode.SDL_SCANCODE_F];
 
                 var input = new CameraInput(panX, panZ, zoomDelta, rotateDelta, mouseDX, mouseDY, deltaTime);
-                if (triggerEdit) game.TriggerEdit();
+                if (triggerEdit)
+                {
+                    game.TriggerEdit();
+                }
                 game.Tick(input);
             }
         }

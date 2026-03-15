@@ -29,7 +29,10 @@ internal sealed class GodCamera
         var forward = new Vector3(-MathF.Sin(_yawGoal), 0, -MathF.Cos(_yawGoal));
         var right = new Vector3(MathF.Cos(_yawGoal), 0, -MathF.Sin(_yawGoal));
         var pan = right * input.PanX + forward * input.PanZ;
-        if (pan.LengthSquared() > 0f) pan = Vector3.Normalize(pan);
+        if (pan.LengthSquared() > 0f)
+        {
+            pan = Vector3.Normalize(pan);
+        }
         _targetGoal += pan * PanSpeed * input.DeltaTime;
 
         _distanceGoal = Math.Clamp(_distanceGoal - input.ZoomDelta * ZoomSpeed, MinDistance, MaxDistance);
