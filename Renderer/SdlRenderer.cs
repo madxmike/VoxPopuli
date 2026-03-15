@@ -5,6 +5,7 @@ using System.Numerics;
 using SDL;
 using VoxPopuli.Game;
 
+/// <summary>Main renderer implementation using SDL3 GPU API.</summary>
 internal sealed unsafe class SdlRenderer : IRenderer
 {
     private readonly SdlGpuDevice _gpu;
@@ -12,12 +13,14 @@ internal sealed unsafe class SdlRenderer : IRenderer
     private Matrix4x4 _proj;
     private uint _projW, _projH;
 
+    /// <summary>Creates a renderer with the given GPU device and color table.</summary>
     internal SdlRenderer(SdlGpuDevice gpu, ReadOnlySpan<Vector4> colorTable)
     {
         _gpu = gpu;
         _subRenderers.Add(new VoxelChunkRenderer(gpu, colorTable, () => new GreedyChunkMeshBuilder()));
     }
 
+    /// <summary>Draws a frame with the given camera view and world.</summary>
     public void DrawFrame(CameraView view, VoxelWorld world, bool wireframe = false)
     {
         var cmd = _gpu.AcquireCommandBuffer();
@@ -84,6 +87,7 @@ internal sealed unsafe class SdlRenderer : IRenderer
         SDL3.SDL_SubmitGPUCommandBuffer(cmd);
     }
 
+    /// <summary>Disposes all sub-renderers.</summary>
     public void Dispose()
     {
         foreach (var sub in _subRenderers)

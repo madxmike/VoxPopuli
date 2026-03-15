@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using SDL;
 using VoxPopuli.Game;
 
+/// <summary>Manages concurrent chunk mesh generation and GPU uploads.</summary>
 internal sealed unsafe class ChunkMeshUploadQueue
 {
     private readonly SdlGpuDevice _gpu;
@@ -17,8 +18,11 @@ internal sealed unsafe class ChunkMeshUploadQueue
 
     private readonly struct MeshResult
     {
+        /// <summary>Index of the chunk this mesh belongs to.</summary>
         internal readonly int ChunkIndex;
+        /// <summary>Allocated vertex array.</summary>
         internal readonly VoxelVertex[] Vertices;
+        /// <summary>Number of valid vertices in the array.</summary>
         internal readonly int VertexCount;
         internal MeshResult(int chunkIndex, VoxelVertex[] vertices, int vertexCount)
         {
@@ -28,14 +32,17 @@ internal sealed unsafe class ChunkMeshUploadQueue
         }
     }
 
+    /// <summary>Creates a mesh upload queue with the given GPU device and mesh builder factory.</summary>
     internal ChunkMeshUploadQueue(SdlGpuDevice gpu, Func<IChunkMeshBuilder> meshBuilderFactory)
     {
         _gpu = gpu;
         _meshBuilderFactory = meshBuilderFactory;
     }
 
+    /// <summary>Checks if a chunk's mesh is currently being generated.</summary>
     internal bool IsInFlight(int chunkIndex) => _inFlight[chunkIndex] != null;
 
+    /// <summary>Cancels any in-flight mesh for a chunk and schedules a new one.</summary>
     internal void Reschedule(VoxelWorld world, int chunkIndex)
     {
         if (_inFlight[chunkIndex] is { } existing)
@@ -47,6 +54,7 @@ internal sealed unsafe class ChunkMeshUploadQueue
         Schedule(world, chunkIndex);
     }
 
+    /// <summary>Schedules a chunk mesh to be generated on a worker thread.</summary>
     internal void Schedule(VoxelWorld world, int chunkIndex)
     {
         var cts = new CancellationTokenSource();
@@ -74,6 +82,7 @@ internal sealed unsafe class ChunkMeshUploadQueue
         }, ct);
     }
 
+    /// <summary>Uploads completed meshes to the GPU and releases scratch buffers.</summary>
     internal void UploadPending(SDL_GPUCommandBuffer* cmd, SDL_GPUBuffer*[] vertexBuffers, uint[] vertexCounts)
     {
         while (_completed.TryDequeue(out MeshResult result))

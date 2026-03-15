@@ -5,14 +5,7 @@ using System.Numerics;
 using System.Threading;
 using VoxPopuli.Game;
 
-/// <summary>
-/// Builds a triangle-list mesh for a chunk using greedy meshing — merging adjacent
-/// coplanar faces of the same voxel type into single large quads rather than emitting
-/// one quad per face. Produces significantly fewer vertices than a naive per-face builder
-/// while rendering identically.
-///
-/// The builder is stateful (reuses an internal mask buffer) and is not thread-safe.
-/// </summary>
+/// <summary>Builds a triangle-list mesh for a chunk using greedy meshing.</summary>
 internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
 {
     // Stores typeId and 4 corner AO values for each visible face in a depth-slice.
@@ -33,11 +26,7 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
     // Reused coordinate buffer for axis-indexed local voxel lookups.
     private readonly int[] _localCoords = new int[3];
 
-    // Encodes the geometry of each of the 6 face orientations.
-    // normalAxis/normalSign: which axis is the face normal and which direction (+1 or -1).
-    // planeOffset: offset along normalAxis where the face plane sits (0 = near side, 1 = far side of voxel).
-    // uAxis/uSign, vAxis/vSign: the two tangent axes and their winding directions.
-    // Winding: vertices emitted as (P, P+du, P+du+dv, P+dv) → triangles (q0,q1,q2),(q0,q2,q3) — CCW front faces.
+    /// <summary>Encodes the geometry of each of the 6 face orientations.</summary>
     private static readonly (int normalAxis, int normalSign, int planeOffset,
                               int uAxis, int uSign, int vAxis, int vSign)[] Faces =
     [
@@ -49,7 +38,7 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
         (1, -1, 0,  0, +1, 2, +1), // -Y
     ];
 
-    /// <inheritdoc/>
+    /// <summary>Builds a mesh for a chunk and writes vertices to <paramref name="output"/>.</summary>
     public int Build(VoxelWorld world, int chunkIndex, Span<VoxelVertex> output, CancellationToken ct)
     {
         var origin = VoxelWorld.ChunkOrigin(chunkIndex);
@@ -70,12 +59,7 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
         return vertexCount;
     }
 
-    /// <summary>
-    /// Populates <see cref="_mask"/> for a single depth-slice along the face's normal axis.
-    /// Each cell stores the voxel's typeId if that face is visible (i.e. the neighbor
-    /// in the normal direction is air), or 0 if the face is hidden or the voxel is air.
-    /// Uses <see cref="VoxelWorld.GetVoxel"/> for neighbors that cross chunk boundaries.
-    /// </summary>
+    /// <summary>Populates the mask for a single depth-slice along the face's normal axis.</summary>
     private void BuildMask(VoxelWorld world, Chunk chunk, int ox, int oy, int oz,
         (int normalAxis, int normalSign, int planeOffset, int uAxis, int uSign, int vAxis, int vSign) face, int depth)
     {
@@ -115,11 +99,7 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
         }
     }
 
-    /// <summary>
-    /// Scans <see cref="_mask"/> and greedily merges visible cells into the largest possible
-    /// rectangles of uniform typeId, emitting one quad per rectangle. Consumed cells are zeroed
-    /// so they are not processed again. Returns the number of vertices written.
-    /// </summary>
+    /// <summary>Scans the mask and greedily merges visible cells into rectangles, emitting one quad per rectangle.</summary>
     private int EmitQuads(Span<VoxelVertex> output, int offset, int ox, int oy, int oz,
         (int normalAxis, int normalSign, int planeOffset, int uAxis, int uSign, int vAxis, int vSign) face, int depth)
     {
@@ -167,7 +147,7 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
         return vertexCount;
     }
 
-    // Expands rightward along u while cells can merge with the seed cell. Returns width ≥ 1.
+    /// <summary>Expands rightward along u while cells can merge with the seed cell. Returns width ≥ 1.</summary>
     private int ExpandWidth(int u, int v, MaskCell seed)
     {
         int size = Chunk.SIZE;
@@ -179,7 +159,7 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
         return width;
     }
 
-    // Expands downward along v while every cell in the row [u, u+width) can merge with the seed cell. Returns height ≥ 1.
+    /// <summary>Expands downward along v while every cell in the row can merge with the seed cell. Returns height ≥ 1.</summary>
     private int ExpandHeight(int u, int v, MaskCell seed, int width)
     {
         int size = Chunk.SIZE;
@@ -198,9 +178,7 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
         return height;
     }
 
-    // Emits a quad as two CCW triangles with per-vertex AO.
-    // Corners: q0=(u,v), q1=(u+w,v), q2=(u,v+h), q3=(u+w,v+h).
-    // Flip diagonal when (ao00+ao11) > (ao10+ao01) to avoid AO interpolation artifacts.
+    /// <summary>Emits a quad as two CCW triangles with per-vertex AO.</summary>
     private static int EmitQuad(Span<VoxelVertex> output, int offset, Vector3 quadOrigin, Vector3 du, Vector3 dv, uint typeId,
         int ao00, int ao10, int ao01, int ao11)
     {
@@ -233,8 +211,7 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
         return 6;
     }
 
-    // Samples 3 neighbors in the face plane to compute AO (0=fully occluded, 3=fully open).
-    // Neighbors are always sampled at (cornerU-1, cornerV), (cornerU, cornerV-1), (cornerU-1, cornerV-1).
+    /// <summary>Samples 3 neighbors in the face plane to compute AO (0=fully occluded, 3=fully open).</summary>
     private static int ComputeCornerAO(VoxelWorld world, Chunk chunk, int ox, int oy, int oz,
         int normalAxis, int normalSign, int uAxis, int vAxis,
         int depth, int cornerU, int cornerV)
@@ -247,6 +224,7 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
         return 3 - (side1 ? 1 : 0) - (side2 ? 1 : 0) - (diag ? 1 : 0);
     }
 
+    /// <summary>Samples a voxel at the given world coordinates, handling chunk boundaries.</summary>
     private static bool SampleSolid(VoxelWorld world, Chunk chunk, int ox, int oy, int oz, int size,
         int normalAxis, int bn, int uAxis, int lu, int vAxis, int lv)
     {
@@ -260,7 +238,7 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
         return world.GetVoxel(ox + lx, oy + ly, oz + lz) != 0;
     }
 
-    // Clears the width×height rectangle at (u,v) in _mask so those cells are not re-processed.
+    /// <summary>Clears the width×height rectangle at (u,v) in the mask so those cells are not re-processed.</summary>
     private void ClearMask(int u, int v, int width, int height)
     {
         int size = Chunk.SIZE;

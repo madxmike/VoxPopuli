@@ -6,25 +6,21 @@ using System.Runtime.InteropServices;
 using System.Text;
 using SDL;
 
-/// <summary>
-/// Owns all SDL3 GPU resources: window, device, pipeline, and depth texture.
-/// This is the only place in the codebase where unsafe SDL pointer types live.
-/// Callers interact with it through safe wrapper methods; no SDL types cross
-/// the boundary into <see cref="SdlRenderer"/> or above.
-/// </summary>
+/// <summary>Owns all SDL3 GPU resources: window, device, pipeline, and depth texture.</summary>
 internal sealed unsafe class SdlGpuDevice : IDisposable
 {
+    /// <summary>SDL3 GPU device handle.</summary>
     internal SDL_GPUDevice* Device { get; private set; }
+    /// <summary>Window handle.</summary>
     internal SDL_Window* Window { get; private set; }
+    /// <summary>Depth texture handle.</summary>
     internal SDL_GPUTexture* DepthTexture { get; private set; }
+    /// <summary>Current depth texture width.</summary>
     internal uint DepthWidth { get; private set; }
+    /// <summary>Current depth texture height.</summary>
     internal uint DepthHeight { get; private set; }
 
-    /// <summary>
-    /// Initialises SDL, creates the window and GPU device, builds the cube
-    /// pipeline, and allocates the initial depth texture sized to the window.
-    /// Throws on any SDL failure so callers never hold a partially-initialised device.
-    /// </summary>
+    /// <summary>Initialises SDL, creates the window and GPU device, builds the cube pipeline, and allocates the initial depth texture.</summary>
     internal SdlGpuDevice(string title, int width, int height)
     {
         SDL3.SDL_Init(SDL_InitFlags.SDL_INIT_VIDEO);
@@ -60,11 +56,11 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
     internal SDL_GPUCommandBuffer* AcquireCommandBuffer() =>
         SDL3.SDL_AcquireGPUCommandBuffer(Device);
 
-    /// <summary>
-    /// Recreates the depth texture when the swapchain dimensions change.
-    /// Must be called before beginning a render pass each frame so the depth
-    /// target always matches the current swapchain size.
-    /// </summary>
+    /// <summary>Acquires a command buffer from the GPU device.</summary>
+    internal SDL_GPUCommandBuffer* AcquireCommandBuffer() =>
+        SDL3.SDL_AcquireGPUCommandBuffer(Device);
+
+    /// <summary>Recreates the depth texture when the swapchain dimensions change.</summary>
     internal void ResizeDepthTextureIfNeeded(uint w, uint h)
     {
         if (w == DepthWidth && h == DepthHeight)
@@ -77,11 +73,7 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
         DepthHeight = h;
     }
 
-    /// <summary>
-    /// Creates a D16_UNORM depth texture at the given pixel dimensions.
-    /// D16 is sufficient for the current near/far range (0.01–100) and avoids
-    /// the memory overhead of D32.
-    /// </summary>
+    /// <summary>Creates a D16_UNORM depth texture at the given pixel dimensions.</summary>
     internal SDL_GPUTexture* CreateDepthTexture(uint w, uint h)
     {
         var createInfo = new SDL_GPUTextureCreateInfo
@@ -101,12 +93,7 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
     internal SDL_GPUShader* LoadShaderInternal(string name, uint numUniformBuffers = 0, uint numReadOnlyStorageBuffers = 0)
         => LoadShader(name, numUniformBuffers, numReadOnlyStorageBuffers);
 
-    /// <summary>
-    /// Loads a pre-compiled compute shader binary and creates an <see cref="SDL_GPUComputePipeline"/>.
-    /// <paramref name="name"/> is the shader filename without extension, e.g. <c>"MeshGen.comp"</c>.
-    /// The binary is loaded from <c>Shaders/compiled/{backend}/{name}.hlsl.{ext}</c>.
-    /// Throws on failure, consistent with constructor error handling.
-    /// </summary>
+    /// <summary>Loads a pre-compiled compute shader binary and creates a compute pipeline.</summary>
     internal SDL_GPUComputePipeline* LoadComputePipeline(
         string name,
         uint numReadOnlyStorageBuffers,
@@ -145,11 +132,7 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
         }
     }
 
-    /// <summary>
-    /// Loads a pre-compiled shader from <c>Shaders/compiled/{backend}/{name}.hlsl.{ext}</c>.
-    /// The backend and entry point name are selected per platform: MSL on macOS uses
-    /// "main0" (shadercross convention), DXIL and SPIRV use "main".
-    /// </summary>
+    /// <summary>Loads a pre-compiled shader from the compiled shaders directory.</summary>
     private SDL_GPUShader* LoadShader(string name, uint numUniformBuffers = 0, uint numReadOnlyStorageBuffers = 0)
     {
         var stage = name.Contains(".vert")
@@ -183,10 +166,7 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
         }
     }
 
-    /// <summary>
-    /// Releases GPU resources in reverse-creation order. Pipeline and depth
-    /// texture must be released before the device; window last.
-    /// </summary>
+    /// <summary>Releases GPU resources in reverse-creation order.</summary>
     public void Dispose()
     {
         SDL3.SDL_ReleaseGPUTexture(Device, DepthTexture);

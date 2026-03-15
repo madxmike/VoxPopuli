@@ -3,22 +3,25 @@ namespace VoxPopuli.Renderer;
 using System.Numerics;
 using System.Runtime.InteropServices;
 
+/// <summary>GPU vertex format for voxel rendering. Packed into 16 bytes for memory efficiency.</summary>
 [StructLayout(LayoutKind.Sequential)]
 internal readonly struct VoxelVertex
 {
-    public readonly Vector3 Position; // world-space, offset 0, 12 bytes
-    public readonly uint TypeId;      // voxel type, offset 12, 4 bytes
-    // total: 16 bytes
+    /// <summary>World-space position.</summary>
+    public readonly Vector3 Position;
+    /// <summary>Bits [29:0] = voxel type, bits [31:30] = AO (0-3).</summary>
+    public readonly uint TypeId;
 
+    /// <summary>Creates a vertex with position and type, AO defaults to 0.</summary>
     public VoxelVertex(Vector3 position, uint typeId) { Position = position; TypeId = typeId; }
 
-    // Packs AO (0–3) into bits [31:30] and typeId into bits [29:0].
+    /// <summary>Creates a vertex with position, type, and ambient occlusion.</summary>
     public VoxelVertex(Vector3 position, uint typeId, int ao)
     {
         Position = position;
         TypeId = (typeId & 0x3FFFFFFFu) | ((uint)(ao & 3) << 30);
     }
 
-    // Worst case: 32³ voxels × 6 faces × 6 vertices per face
+    /// <summary>Upper bound on vertices per chunk if every voxel face is visible.</summary>
     public const int MaxVerticesPerChunk = 32 * 32 * 32 * 6 * 6;
 }

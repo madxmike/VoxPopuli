@@ -5,6 +5,7 @@ using System.Numerics;
 using SDL;
 using VoxPopuli.Game;
 
+/// <summary>Sub-renderer that renders voxel chunks using GPU instancing.</summary>
 internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
 {
     private readonly SdlGpuDevice _gpu;
@@ -20,6 +21,7 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
     private SDL_GPUGraphicsPipeline* _wireframePipeline;
     private bool _initialized;
 
+    /// <summary>Creates a voxel chunk renderer with the given GPU device and mesh builder factory.</summary>
     internal VoxelChunkRenderer(SdlGpuDevice gpu, ReadOnlySpan<Vector4> colorTable, Func<IChunkMeshBuilder> meshBuilderFactory)
     {
         _gpu = gpu;
@@ -163,6 +165,7 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
         SDL3.SDL_ReleaseGPUShader(gpu.Device, frag);
     }
 
+    /// <summary>Prepares frame data: schedules chunk mesh generation and uploads pending meshes.</summary>
     public unsafe void PrepareFrame(SDL_GPUCommandBuffer* cmd, in RenderFrame frame)
     {
         if (frame.World == null)
@@ -215,6 +218,7 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
 
     private int _frameCount;
 
+    /// <summary>Draws all visible chunks during the render pass.</summary>
     public void Draw(in RenderFrame frame)
     {
         var pass = frame.RenderPass;
@@ -247,6 +251,7 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
         }
     }
 
+    /// <summary>Disposes all GPU resources.</summary>
     public void Dispose()
     {
         for (int i = 0; i < VoxelWorld.MAX_CHUNKS; i++)
