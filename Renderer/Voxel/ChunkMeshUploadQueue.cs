@@ -36,9 +36,8 @@ internal sealed unsafe class ChunkMeshUploadQueue
 
     internal bool IsInFlight(int chunkIndex) => _inFlight[chunkIndex] != null;
 
-    internal void Reschedule(VoxelWorld world, int chunkIndex, uint[] vertexCounts)
+    internal void Reschedule(VoxelWorld world, int chunkIndex)
     {
-        vertexCounts[chunkIndex] = 0;
         if (_inFlight[chunkIndex] is { } existing)
         {
             existing.Cancel();
