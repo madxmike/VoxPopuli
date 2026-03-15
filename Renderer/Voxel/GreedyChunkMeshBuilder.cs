@@ -18,6 +18,9 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
     // Stores typeId of visible faces for one depth-slice; 0 means no face.
     private readonly int[] _mask = new int[Chunk.SIZE * Chunk.SIZE];
 
+    // Reused coordinate buffer for axis-indexed local voxel lookups.
+    private readonly int[] _localCoords = new int[3];
+
     // Encodes the geometry of each of the 6 face orientations.
     // normalAxis/normalSign: which axis is the face normal and which direction (+1 or -1).
     // planeOffset: offset along normalAxis where the face plane sits (0 = near side, 1 = far side of voxel).
@@ -63,21 +66,20 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
     {
         int size = Chunk.SIZE;
         var (normalAxis, normalSign, _, uAxis, _, vAxis, _) = face;
-        int[] localCoords = new int[3];
 
         Array.Clear(_mask, 0, size * size);
 
         for (int v = 0; v < size; v++)
         for (int u = 0; u < size; u++)
         {
-            localCoords[normalAxis] = depth; localCoords[uAxis] = u; localCoords[vAxis] = v;
-            byte typeId = chunk.Get(localCoords[0], localCoords[1], localCoords[2]);
+            _localCoords[normalAxis] = depth; _localCoords[uAxis] = u; _localCoords[vAxis] = v;
+            byte typeId = chunk.Get(_localCoords[0], _localCoords[1], _localCoords[2]);
             if (typeId == 0) continue;
 
-            localCoords[normalAxis] = depth + normalSign;
-            bool neighborAir = localCoords[normalAxis] < 0 || localCoords[normalAxis] >= size
-                ? world.GetVoxel(ox + localCoords[0], oy + localCoords[1], oz + localCoords[2]) == 0
-                : chunk.Get(localCoords[0], localCoords[1], localCoords[2]) == 0;
+            _localCoords[normalAxis] = depth + normalSign;
+            bool neighborAir = _localCoords[normalAxis] < 0 || _localCoords[normalAxis] >= size
+                ? world.GetVoxel(ox + _localCoords[0], oy + _localCoords[1], oz + _localCoords[2]) == 0
+                : chunk.Get(_localCoords[0], _localCoords[1], _localCoords[2]) == 0;
 
             if (neighborAir)
                 _mask[u + v * size] = typeId;
@@ -94,7 +96,6 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
     {
         int size = Chunk.SIZE;
         var (normalAxis, _, planeOffset, uAxis, uSign, vAxis, vSign) = face;
-        int[] localCoords = new int[3];
         int vertexCount = 0;
 
         for (int v = 0; v < size; v++)
@@ -108,10 +109,10 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
 
             // For negative-sign axes the quad corner starts at the far edge of the rectangle
             // so that du/dv point in the correct winding direction.
-            localCoords[normalAxis] = depth + planeOffset;
-            localCoords[uAxis] = uSign > 0 ? u : u + width;
-            localCoords[vAxis] = vSign > 0 ? v : v + height;
-            var quadOrigin = new Vector3(ox + localCoords[0], oy + localCoords[1], oz + localCoords[2]);
+            _localCoords[normalAxis] = depth + planeOffset;
+            _localCoords[uAxis] = uSign > 0 ? u : u + width;
+            _localCoords[vAxis] = vSign > 0 ? v : v + height;
+            var quadOrigin = new Vector3(ox + _localCoords[0], oy + _localCoords[1], oz + _localCoords[2]);
             var du = SetAxis(Vector3.Zero, uAxis, uSign * width);
             var dv = SetAxis(Vector3.Zero, vAxis, vSign * height);
 
