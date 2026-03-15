@@ -1,0 +1,23 @@
+#pragma clang diagnostic ignored "-Wunused-variable"
+
+#include <metal_stdlib>
+#include <simd/simd.h>
+#include <metal_atomic>
+
+using namespace metal;
+
+struct type_RWStructuredBuffer_uint
+{
+    uint _m0[1];
+};
+
+struct type_ChunkUB
+{
+    uint chunkIndex;
+};
+
+kernel void main0(device type_RWStructuredBuffer_uint& faceCounter [[buffer(4)]])
+{
+    uint _22 = atomic_fetch_add_explicit((device atomic_uint*)&faceCounter._m0[0u], 1u, memory_order_relaxed);
+}
+

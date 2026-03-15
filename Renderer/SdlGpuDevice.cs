@@ -76,7 +76,7 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
         var createInfo = new SDL_GPUTextureCreateInfo
         {
             type = SDL_GPUTextureType.SDL_GPU_TEXTURETYPE_2D,
-            format = SDL_GPUTextureFormat.SDL_GPU_TEXTUREFORMAT_D16_UNORM,
+            format = SDL_GPUTextureFormat.SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
             usage = SDL_GPUTextureUsageFlags.SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
             width = w,
             height = h,
@@ -87,15 +87,57 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
         return SDL3.SDL_CreateGPUTexture(Device, &createInfo);
     }
 
-    internal SDL_GPUShader* LoadShaderInternal(string name, uint numUniformBuffers = 0)
-        => LoadShader(name, numUniformBuffers);
+    internal SDL_GPUShader* LoadShaderInternal(string name, uint numUniformBuffers = 0, uint numReadOnlyStorageBuffers = 0)
+        => LoadShader(name, numUniformBuffers, numReadOnlyStorageBuffers);
+
+    /// <summary>
+    /// Loads a pre-compiled compute shader binary and creates an <see cref="SDL_GPUComputePipeline"/>.
+    /// <paramref name="name"/> is the shader filename without extension, e.g. <c>"MeshGen.comp"</c>.
+    /// The binary is loaded from <c>Shaders/compiled/{backend}/{name}.hlsl.{ext}</c>.
+    /// Throws on failure, consistent with constructor error handling.
+    /// </summary>
+    internal SDL_GPUComputePipeline* LoadComputePipeline(
+        string name,
+        uint numReadOnlyStorageBuffers,
+        uint numReadWriteStorageBuffers,
+        uint numUniformBuffers)
+    {
+        var (ext, format) = true switch
+        {
+            _ when OperatingSystem.IsWindows() => ("dxil", SDL_GPUShaderFormat.SDL_GPU_SHADERFORMAT_DXIL),
+            _ when OperatingSystem.IsMacOS()   => ("msl",  SDL_GPUShaderFormat.SDL_GPU_SHADERFORMAT_MSL),
+            _                                  => ("spv",  SDL_GPUShaderFormat.SDL_GPU_SHADERFORMAT_SPIRV)
+        };
+
+        var source = File.ReadAllBytes($"Shaders/compiled/{ext}/{name}.hlsl.{ext}");
+        var entryPoint = format == SDL_GPUShaderFormat.SDL_GPU_SHADERFORMAT_MSL ? "main0" : "main";
+
+        fixed (byte* src = source)
+        fixed (byte* ep = Encoding.UTF8.GetBytes(entryPoint))
+        {
+            var info = new SDL_GPUComputePipelineCreateInfo
+            {
+                code_size = (nuint)source.Length,
+                code = src,
+                entrypoint = ep,
+                format = format,
+                num_readonly_storage_buffers  = numReadOnlyStorageBuffers,
+                num_readwrite_storage_buffers = numReadWriteStorageBuffers,
+                num_uniform_buffers           = numUniformBuffers
+            };
+            var pipeline = SDL3.SDL_CreateGPUComputePipeline(Device, &info);
+            if (pipeline == null)
+                throw new Exception($"SDL_CreateGPUComputePipeline failed: {SDL3.SDL_GetError()}");
+            return pipeline;
+        }
+    }
 
     /// <summary>
     /// Loads a pre-compiled shader from <c>Shaders/compiled/{backend}/{name}.hlsl.{ext}</c>.
     /// The backend and entry point name are selected per platform: MSL on macOS uses
     /// "main0" (shadercross convention), DXIL and SPIRV use "main".
     /// </summary>
-    private SDL_GPUShader* LoadShader(string name, uint numUniformBuffers = 0)
+    private SDL_GPUShader* LoadShader(string name, uint numUniformBuffers = 0, uint numReadOnlyStorageBuffers = 0)
     {
         var stage = name.Contains(".vert")
             ? SDL_GPUShaderStage.SDL_GPU_SHADERSTAGE_VERTEX
@@ -121,7 +163,8 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
                 entrypoint = ep,
                 format = format,
                 stage = stage,
-                num_uniform_buffers = numUniformBuffers
+                num_uniform_buffers = numUniformBuffers,
+                num_storage_buffers = numReadOnlyStorageBuffers
             };
             return SDL3.SDL_CreateGPUShader(Device, &info);
         }

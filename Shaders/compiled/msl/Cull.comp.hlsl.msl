@@ -1,0 +1,46 @@
+#pragma clang diagnostic ignored "-Wunused-variable"
+
+#include <metal_stdlib>
+#include <simd/simd.h>
+#include <metal_atomic>
+
+using namespace metal;
+
+struct type_RWStructuredBuffer_v3float
+{
+    float3 _m0[1];
+};
+
+struct type_RWStructuredBuffer_uint
+{
+    uint _m0[1];
+};
+
+struct type_CullUB
+{
+    float4x4 viewProj;
+};
+
+kernel void main0(device type_RWStructuredBuffer_uint& activeSlots [[buffer(3)]], device type_RWStructuredBuffer_uint& drawCount [[buffer(4)]], device type_RWStructuredBuffer_uint& indirectCmds [[buffer(5)]], device type_RWStructuredBuffer_uint& indexCounts [[buffer(6)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+{
+    do
+    {
+        if (gl_GlobalInvocationID.x >= 2056u)
+        {
+            break;
+        }
+        if (activeSlots._m0[gl_GlobalInvocationID.x] == 0u)
+        {
+            break;
+        }
+        uint _55 = atomic_fetch_add_explicit((device atomic_uint*)&drawCount._m0[0u], 1u, memory_order_relaxed);
+        uint _58 = _55 * 5u;
+        indirectCmds._m0[_58] = indexCounts._m0[gl_GlobalInvocationID.x];
+        indirectCmds._m0[_58 + 1u] = 1u;
+        indirectCmds._m0[_58 + 2u] = gl_GlobalInvocationID.x * 131072u;
+        indirectCmds._m0[_58 + 3u] = gl_GlobalInvocationID.x * 32768u;
+        indirectCmds._m0[_58 + 4u] = gl_GlobalInvocationID.x;
+        break;
+    } while(false);
+}
+
