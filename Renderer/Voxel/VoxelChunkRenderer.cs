@@ -258,6 +258,8 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
         _vertexCounts[i] = (uint)count;
     }
 
+    private int _frameCount;
+
     public void Draw(in RenderFrame frame)
     {
         var pass = frame.RenderPass;

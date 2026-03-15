@@ -18,19 +18,20 @@ internal readonly struct Frustum
 
     public static Frustum FromViewProj(in Matrix4x4 m)
     {
-        // Rows of a System.Numerics row-major matrix
-        var r0 = new Vector4(m.M11, m.M12, m.M13, m.M14);
-        var r1 = new Vector4(m.M21, m.M22, m.M23, m.M24);
-        var r2 = new Vector4(m.M31, m.M32, m.M33, m.M34);
-        var r3 = new Vector4(m.M41, m.M42, m.M43, m.M44);
+        // System.Numerics uses row-vector convention: clip = worldPos * M.
+        // Gribb/Hartmann plane extraction therefore operates on columns, not rows.
+        var c0 = new Vector4(m.M11, m.M21, m.M31, m.M41);
+        var c1 = new Vector4(m.M12, m.M22, m.M32, m.M42);
+        var c2 = new Vector4(m.M13, m.M23, m.M33, m.M43);
+        var c3 = new Vector4(m.M14, m.M24, m.M34, m.M44);
 
         return new Frustum(
-            Normalize(r3 + r0),
-            Normalize(r3 - r0),
-            Normalize(r3 + r1),
-            Normalize(r3 - r1),
-            Normalize(r3 + r2),
-            Normalize(r3 - r2)
+            Normalize(c3 + c0),
+            Normalize(c3 - c0),
+            Normalize(c3 + c1),
+            Normalize(c3 - c1),
+            Normalize(c3 + c2),
+            Normalize(c3 - c2)
         );
     }
 

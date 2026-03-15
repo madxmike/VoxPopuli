@@ -20,6 +20,7 @@
         <Compile Include="../Renderer/Voxel/IChunkMeshBuilder.cs" />
         <Compile Include="../Renderer/Voxel/VoxelVertex.cs" />
         <Compile Include="../Renderer/Voxel/GreedyChunkMeshBuilder.cs" />
+        <Compile Include="../Renderer/Frustum.cs" />
     </ItemGroup>
 
 </Project>
