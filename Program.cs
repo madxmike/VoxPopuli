@@ -1,7 +1,9 @@
 namespace VoxPopuli;
+
 using System.Numerics;
 using SDL;
 using VoxPopuli.Game;
+using VoxPopuli.Input;
 using VoxPopuli.Renderer;
 internal static class Program
 {
@@ -25,71 +27,57 @@ internal static class Program
         using var device = new SdlGpuDevice("VoxPopuli", 800, 600);
         using var renderer = new SdlRenderer(device, colorTable);
         using var game = new VoxGame(renderer);
+        using var inputSystem = new InputSystem();
+
+        float zoomDelta = 0f, mouseDX = 0f, mouseDY = 0f;
+        float rotateDelta = 0f, panX = 0f, panZ = 0f;
+        bool fDown = false;
+
+        inputSystem.Bind(new ActionBinding("panZ", [TriggerCondition.WhileKeyHeld("W")], _ => panZ = 1f));
+        inputSystem.Bind(new ActionBinding("panZ", [TriggerCondition.WhileKeyHeld("S")], _ => panZ = -1f));
+        inputSystem.Bind(new ActionBinding("panX", [TriggerCondition.WhileKeyHeld("A")], _ => panX = -1f));
+        inputSystem.Bind(new ActionBinding("panX", [TriggerCondition.WhileKeyHeld("D")], _ => panX = 1f));
+        inputSystem.Bind(new ActionBinding("rotate", [TriggerCondition.WhileKeyHeld("Q")], _ => rotateDelta = -1f));
+        inputSystem.Bind(new ActionBinding("rotate", [TriggerCondition.WhileKeyHeld("E")], _ => rotateDelta = 1f));
+        inputSystem.Bind(new ActionBinding("zoom", [TriggerCondition.OnMouseWheel()], e => zoomDelta += ((MouseWheelEvent)e).Delta));
+        inputSystem.Bind(new ActionBinding("fKey", [TriggerCondition.WhileKeyHeld("F")], e => fDown = ((KeyEvent)e).IsPressed));
+        inputSystem.Bind(new ActionBinding("quit", [TriggerCondition.OnKeyPressed("P")], _ => game.ToggleWireframe()));
+        inputSystem.Bind(new ActionBinding("quit", [TriggerCondition.OnKeyPressed("R")], _ => game.MarkAllChunksDirty()));
+        inputSystem.Bind(new ActionBinding("mouseMotion", [TriggerCondition.OnMouseMotion()], e =>
+        {
+            if (inputSystem.RightMouseDown)
+            {
+                var motion = (MouseMotionEvent)e;
+                mouseDX += motion.DeltaX;
+                mouseDY += motion.DeltaY;
+            }
+        }));
+
         unsafe
         {
-            var run = true;
-            bool prevFDown = false;
             ulong prevCounter = SDL3.SDL_GetPerformanceCounter();
             ulong freq = SDL3.SDL_GetPerformanceFrequency();
+            bool prevFDown = false;
 
-            while (run)
+            while (inputSystem.Poll())
             {
                 ulong now = SDL3.SDL_GetPerformanceCounter();
                 float deltaTime = (float)(now - prevCounter) / (float)freq;
                 prevCounter = now;
 
-                float zoomDelta = 0f, mouseDX = 0f, mouseDY = 0f;
-                float rotateDelta = 0f, panX = 0f, panZ = 0f;
+                var input = new CameraInput(panX, panZ, zoomDelta, rotateDelta, mouseDX, mouseDY, deltaTime);
+                var view = game.Tick(input);
 
-                SDL_Event @event;
-                while (SDL3.SDL_PollEvent(&@event))
-                {
-                    if (@event.type == (uint)SDL_EventType.SDL_EVENT_WINDOW_CLOSE_REQUESTED)
-                    {
-                        run = false;
-                    }
-                    else if (@event.type == (uint)SDL_EventType.SDL_EVENT_KEY_DOWN &&
-                             @event.key.scancode == SDL_Scancode.SDL_SCANCODE_P)
-                    {
-                        game.ToggleWireframe();
-                    }
-                    else if (@event.type == (uint)SDL_EventType.SDL_EVENT_KEY_DOWN &&
-                             @event.key.scancode == SDL_Scancode.SDL_SCANCODE_R)
-                    {
-                        game.MarkAllChunksDirty();
-                    }
-                    else if (@event.type == (uint)SDL_EventType.SDL_EVENT_MOUSE_WHEEL)
-                    {
-                        zoomDelta += @event.wheel.y;
-                    }
-                    else if (@event.type == (uint)SDL_EventType.SDL_EVENT_MOUSE_MOTION)
-                    {
-                        var buttons = SDL3.SDL_GetMouseState(null, null);
-                        if ((buttons & (SDL_MouseButtonFlags)SDL3.SDL_BUTTON_RMASK) != 0)
-                        {
-                            mouseDX += @event.motion.xrel;
-                            mouseDY += @event.motion.yrel;
-                        }
-                    }
-                }
-
-                SDLBool* keys = SDL3.SDL_GetKeyboardState(null);
-                if (keys[(int)SDL_Scancode.SDL_SCANCODE_W]) { panZ = 1f; }
-                if (keys[(int)SDL_Scancode.SDL_SCANCODE_S]) { panZ = -1f; }
-                if (keys[(int)SDL_Scancode.SDL_SCANCODE_A]) { panX = -1f; }
-                if (keys[(int)SDL_Scancode.SDL_SCANCODE_D]) { panX = 1f; }
-                if (keys[(int)SDL_Scancode.SDL_SCANCODE_Q]) { rotateDelta = -1f; }
-                if (keys[(int)SDL_Scancode.SDL_SCANCODE_E]) { rotateDelta = 1f; }
-                bool fDown = keys[(int)SDL_Scancode.SDL_SCANCODE_F];
                 bool triggerEdit = fDown && !prevFDown;
                 prevFDown = fDown;
 
-                var input = new CameraInput(panX, panZ, zoomDelta, rotateDelta, mouseDX, mouseDY, deltaTime);
-                var view = game.Tick(input);
                 if (triggerEdit)
                 {
                     game.DeleteClosestChunk(view.Eye, view.Target);
                 }
+
+                zoomDelta = 0f; mouseDX = 0f; mouseDY = 0f;
+                rotateDelta = 0f; panX = 0f; panZ = 0f;
             }
         }
     }
