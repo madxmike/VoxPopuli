@@ -45,6 +45,9 @@
         <Compile Remove="Tests/**" />
         <EmbeddedResource Remove="Tests/**" />
         <None Remove="Tests/**" />
+        <Compile Remove="Benchmarks/**" />
+        <EmbeddedResource Remove="Benchmarks/**" />
+        <None Remove="Benchmarks/**" />
     </ItemGroup>
 
     <PropertyGroup>

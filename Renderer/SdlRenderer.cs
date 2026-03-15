@@ -34,16 +34,18 @@ internal sealed unsafe class SdlRenderer : IRenderer
         }
 
         var view_matrix = Matrix4x4.CreateLookAt(view.Eye, view.Target, view.Up);
+        var viewProj = view_matrix * _proj;
         var frame = new RenderFrame
         {
-            ViewProj = view_matrix * _proj,
+            ViewProj = viewProj,
             View = view_matrix,
             Width = sw,
             Height = sh,
             RenderPass = null,
             CommandBuffer = cmd,
             World = world,
-            Wireframe = wireframe
+            Wireframe = wireframe,
+            Frustum = Frustum.FromViewProj(viewProj)
         };
 
         foreach (var sub in _subRenderers)

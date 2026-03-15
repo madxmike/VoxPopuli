@@ -14,4 +14,5 @@ internal unsafe readonly struct RenderFrame
     public required SDL_GPUCommandBuffer* CommandBuffer { get; init; }
     public VoxelWorld? World { get; init; }
     public bool Wireframe { get; init; }
+    public Frustum Frustum { get; init; }
 }

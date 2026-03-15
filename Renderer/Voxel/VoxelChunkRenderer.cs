@@ -279,6 +279,11 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
                 continue;
             }
 
+            if (frame.World != null && frame.Frustum.IsAabbOutside(frame.World.ChunkAabbMin[i], frame.World.ChunkAabbMax[i]))
+            {
+                continue;
+            }
+
             var binding = new SDL_GPUBufferBinding { buffer = _vertexBuffers[i], offset = 0 };
             SDL3.SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
             SDL3.SDL_DrawGPUPrimitives(pass, _vertexCounts[i], 1, 0, 0);
