@@ -2,28 +2,24 @@ namespace VoxPopuli.Game;
 
 internal static class TerrainGenerator
 {
-    private const int PADDED = 34;
-    private const int STRIDE_Y = PADDED;
-    private const int STRIDE_Z = PADDED * PADDED; // 1156
-
     private static byte BiomeType(int surfaceY) => surfaceY switch
     {
-        <= 8  => 5, // cyan   — stone/deep
-        <= 18 => 3, // blue   — dirt
-        <= 32 => 2, // green  — grass
-        <= 42 => 7, // orange — rock
-        _     => 8, // grey   — snow
+        <= 8  => 5,
+        <= 18 => 3,
+        <= 32 => 2,
+        <= 42 => 7,
+        _     => 8,
     };
 
-    internal static void GenerateChunk(int cx, int cy, int cz, int seed, Span<byte> padded)
+    internal static void GenerateChunk(int cx, int cy, int cz, int seed, Chunk chunk)
     {
-        int wyBase = cy * 32;
+        int wyBase = cy * Chunk.SIZE;
 
-        for (int lz = 0; lz < 32; lz++)
-        for (int lx = 0; lx < 32; lx++)
+        for (int lz = 0; lz < Chunk.SIZE; lz++)
+        for (int lx = 0; lx < Chunk.SIZE; lx++)
         {
-            int wx = cx * 32 + lx;
-            int wz = cz * 32 + lz;
+            int wx = cx * Chunk.SIZE + lx;
+            int wz = cz * Chunk.SIZE + lz;
 
             float n = SimplexNoise.Sample(wx * 0.004f + seed, wz * 0.004f + seed)
                     + SimplexNoise.Sample(wx * 0.016f + seed, wz * 0.016f + seed) * 0.3f;
@@ -33,32 +29,29 @@ internal static class TerrainGenerator
 
             byte surface = BiomeType(surfaceY);
 
-            for (int ly = 0; ly < 32; ly++)
+            for (int ly = 0; ly < Chunk.SIZE; ly++)
             {
                 int wy = wyBase + ly;
                 byte type;
-                if (wy < surfaceY)       type = 5;       // stone
+                if (wy < surfaceY)       type = 5;
                 else if (wy == surfaceY) type = surface;
-                else                     continue;        // air — leave 0
+                else                     continue;
 
-                padded[(lx + 1) + (ly + 1) * STRIDE_Y + (lz + 1) * STRIDE_Z] = type;
+                chunk.Set(lx, ly, lz, type);
             }
         }
     }
 
     internal static void GenerateWorld(VoxelWorld world, int seed)
     {
-        var buf = new byte[PADDED * PADDED * PADDED];
-
-        for (int i = 0; i < 512; i++)
+        for (int i = 0; i < VoxelWorld.MAX_CHUNKS; i++)
         {
             int cx = i % 16;
             int cy = (i / 16) % 2;
             int cz = i / 32;
 
-            Array.Clear(buf);
-            GenerateChunk(cx, cy, cz, seed, buf);
-            world.SetChunkVoxels(i, buf);
+            world.Chunks[i].MutableData.Clear();
+            GenerateChunk(cx, cy, cz, seed, world.Chunks[i]);
         }
     }
 }
