@@ -1,4 +1,5 @@
 namespace VoxPopuli;
+using System.Numerics;
 using SDL;
 using VoxPopuli.Game;
 using VoxPopuli.Renderer;
@@ -7,8 +8,14 @@ internal static class Program
     [STAThread]
     private static void Main()
     {
+        // Index 0 = air (transparent), indices 1-255 = placeholder solid colors
+        var colorTable = new Vector4[256];
+        colorTable[0] = Vector4.Zero;
+        for (int i = 1; i < 256; i++)
+            colorTable[i] = new Vector4((i & 1) * 0.8f + 0.1f, ((i >> 1) & 1) * 0.8f + 0.1f, ((i >> 2) & 1) * 0.8f + 0.1f, 1f);
+
         using var device = new SdlGpuDevice("VoxPopuli", 800, 600);
-        using var renderer = new SdlRenderer(device);
+        using var renderer = new SdlRenderer(device, colorTable);
         using var game = new VoxGame(renderer);
         unsafe
         {

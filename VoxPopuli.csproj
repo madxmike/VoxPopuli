@@ -42,6 +42,9 @@
         <Compile Remove="native/**" />
         <EmbeddedResource Remove="native/**" />
         <None Remove="native/**" />
+        <Compile Remove="Tests/**" />
+        <EmbeddedResource Remove="Tests/**" />
+        <None Remove="Tests/**" />
     </ItemGroup>
 
     <PropertyGroup>

@@ -4,14 +4,14 @@ using VoxPopuli.Renderer;
 
 internal sealed class VoxGame : IDisposable
 {
-    private readonly SdlRenderer _renderer;
+    private readonly IRenderer _renderer;
     private readonly VoxelWorld _world;
     private readonly GodCamera _camera = new();
 
-    internal VoxGame(SdlRenderer renderer)
+    internal VoxGame(IRenderer renderer)
     {
         _renderer = renderer;
-        _world    = new VoxelWorld();
+        _world = new VoxelWorld();
         TerrainGenerator.GenerateWorld(_world, seed: 42);
     }
 
@@ -23,7 +23,7 @@ internal sealed class VoxGame : IDisposable
     internal void Tick(CameraInput input)
     {
         var view = _camera.Update(input);
-        _renderer.DrawFrame(ReadOnlySpan<MeshInstance>.Empty, view);
+        _renderer.DrawFrame(view, _world);
     }
 
     public void Dispose() { }

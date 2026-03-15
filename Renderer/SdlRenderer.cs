@@ -12,16 +12,13 @@ internal sealed unsafe class SdlRenderer : IRenderer
     private Matrix4x4 _proj;
     private uint _projW, _projH;
 
-    internal SdlRenderer(SdlGpuDevice gpu) { _gpu = gpu; }
+    internal SdlRenderer(SdlGpuDevice gpu, ReadOnlySpan<Vector4> colorTable)
+    {
+        _gpu = gpu;
+        _subRenderers.Add(new VoxelChunkRenderer(gpu, colorTable, new CpuChunkMeshBuilder()));
+    }
 
-    internal SdlGpuDevice Gpu => _gpu;
-
-    public void AddSubRenderer(ISubRenderer subRenderer) => _subRenderers.Add(subRenderer);
-
-    public MeshHandle UploadMesh(ReadOnlySpan<Vertex> vertices) => throw new NotImplementedException();
-    public void ReleaseMesh(MeshHandle handle) => throw new NotImplementedException();
-
-    public void DrawFrame(ReadOnlySpan<MeshInstance> instances, CameraView view)
+    public void DrawFrame(CameraView view, VoxelWorld world)
     {
         var cmd = _gpu.AcquireCommandBuffer();
         SDL_GPUTexture* swapchain; uint sw, sh;
@@ -44,7 +41,8 @@ internal sealed unsafe class SdlRenderer : IRenderer
             Width         = sw,
             Height        = sh,
             RenderPass    = null,
-            CommandBuffer = cmd
+            CommandBuffer = cmd,
+            World         = world
         };
 
         foreach (var sub in _subRenderers)
@@ -64,6 +62,7 @@ internal sealed unsafe class SdlRenderer : IRenderer
             load_op             = SDL_GPULoadOp.SDL_GPU_LOADOP_CLEAR,
             store_op            = SDL_GPUStoreOp.SDL_GPU_STOREOP_DONT_CARE,
             stencil_load_op     = SDL_GPULoadOp.SDL_GPU_LOADOP_DONT_CARE,
+
             stencil_store_op    = SDL_GPUStoreOp.SDL_GPU_STOREOP_DONT_CARE,
             cycle               = true
         };
