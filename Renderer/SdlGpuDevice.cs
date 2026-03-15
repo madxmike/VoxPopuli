@@ -53,9 +53,6 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
         }
     }
 
-    internal SDL_GPUCommandBuffer* AcquireCommandBuffer() =>
-        SDL3.SDL_AcquireGPUCommandBuffer(Device);
-
     /// <summary>Acquires a command buffer from the GPU device.</summary>
     internal SDL_GPUCommandBuffer* AcquireCommandBuffer() =>
         SDL3.SDL_AcquireGPUCommandBuffer(Device);
