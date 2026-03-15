@@ -8,22 +8,23 @@ using VoxPopuli.Game;
 internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
 {
     private readonly SdlGpuDevice _gpu;
-    private readonly IChunkMeshBuilder _meshBuilder;
+    private readonly Func<IChunkMeshBuilder> _meshBuilderFactory;
 
     private readonly SDL_GPUBuffer*[] _vertexBuffers = new SDL_GPUBuffer*[VoxelWorld.MAX_CHUNKS];
     private readonly uint[] _vertexCounts = new uint[VoxelWorld.MAX_CHUNKS];
-    private readonly VoxelVertex[] _meshScratch = new VoxelVertex[VoxelVertex.MaxVerticesPerChunk];
+
+    private readonly ChunkMeshUploadQueue _uploadQueue;
 
     private SDL_GPUBuffer* _colorTableBuffer;
-    private SDL_GPUTransferBuffer* _transferBuffer;
     private SDL_GPUGraphicsPipeline* _pipeline;
     private SDL_GPUGraphicsPipeline* _wireframePipeline;
     private bool _initialized;
 
-    internal VoxelChunkRenderer(SdlGpuDevice gpu, ReadOnlySpan<Vector4> colorTable, IChunkMeshBuilder meshBuilder)
+    internal VoxelChunkRenderer(SdlGpuDevice gpu, ReadOnlySpan<Vector4> colorTable, Func<IChunkMeshBuilder> meshBuilderFactory)
     {
         _gpu = gpu;
-        _meshBuilder = meshBuilder;
+        _meshBuilderFactory = meshBuilderFactory;
+        _uploadQueue = new ChunkMeshUploadQueue(gpu, meshBuilderFactory);
 
         // Upload color table (always 256 entries = 4096 bytes) to a GRAPHICS_STORAGE_READ buffer
         const uint colorTableSize = 256 * 4 * sizeof(float); // 256 × Vector4 = 4096 bytes
@@ -72,18 +73,6 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
         SDL3.SDL_EndGPUCopyPass(copyPass);
         SDL3.SDL_SubmitGPUCommandBuffer(uploadCmd);
         SDL3.SDL_ReleaseGPUTransferBuffer(gpu.Device, tempTransfer);
-
-        // Create reusable transfer buffer for per-chunk uploads
-        var transferInfo = new SDL_GPUTransferBufferCreateInfo
-        {
-            usage = SDL_GPUTransferBufferUsage.SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-            size  = (uint)(VoxelVertex.MaxVerticesPerChunk * 16)
-        };
-        _transferBuffer = SDL3.SDL_CreateGPUTransferBuffer(gpu.Device, &transferInfo);
-        if (_transferBuffer == null)
-        {
-            throw new Exception(SDL3.SDL_GetError());
-        }
 
         // Load shaders: vert needs 1 uniform buffer (ViewProj) + 1 storage buffer (colorTable)
         var vert = gpu.LoadShaderInternal("Voxel.vert", numUniformBuffers: 1, numReadOnlyStorageBuffers: 1);
@@ -183,23 +172,38 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
 
         if (!_initialized)
         {
-            for (int i = 0; i < VoxelWorld.MAX_CHUNKS; i++)
+            const int chunksX = 24, chunksY = 2, chunksZ = 24;
+            const float centerX = (chunksX - 1) / 2f;
+            const float centerZ = (chunksZ - 1) / 2f;
+
+            var indices = new int[VoxelWorld.MAX_CHUNKS];
+            for (int i = 0; i < VoxelWorld.MAX_CHUNKS; i++) { indices[i] = i; }
+
+            Array.Sort(indices, (a, b) =>
             {
-                BuildAndUploadChunk(cmd, frame.World, i);
+                int cxa = VoxelWorld.ChunkIndexToCoords(a, out _, out int cza);
+                int cxb = VoxelWorld.ChunkIndexToCoords(b, out _, out int czb);
+                float da = (cxa - centerX) * (cxa - centerX) + (cza - centerZ) * (cza - centerZ);
+                float db = (cxb - centerX) * (cxb - centerX) + (czb - centerZ) * (czb - centerZ);
+                return da.CompareTo(db);
+            });
+
+            foreach (int i in indices)
+            {
+                _uploadQueue.Schedule(frame.World, i);
             }
             _initialized = true;
-            LogFaceCount();
         }
 
-        bool dirty = false;
+        _uploadQueue.UploadPending(cmd, _vertexBuffers, _vertexCounts);
+
         foreach (int i in frame.World.DrainDirtyChunks())
         {
-            BuildAndUploadChunk(cmd, frame.World, i);
-            dirty = true;
-        }
-        if (dirty)
-        {
-            LogFaceCount();
+            if (_uploadQueue.IsInFlight(i))
+            {
+                continue;
+            }
+            _uploadQueue.Schedule(frame.World, i);
         }
     }
 
@@ -211,51 +215,6 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
             totalVerts += v;
         }
         Console.WriteLine($"[VoxelChunkRenderer] {totalVerts / 3} triangles ({totalVerts / 6} quads)");
-    }
-
-    private void BuildAndUploadChunk(SDL_GPUCommandBuffer* cmd, VoxelWorld world, int i)
-    {
-        int count = _meshBuilder.Build(world, i, _meshScratch);
-
-        if (count == 0)
-        {
-            if (_vertexBuffers[i] != null)
-            {
-                SDL3.SDL_ReleaseGPUBuffer(_gpu.Device, _vertexBuffers[i]);
-                _vertexBuffers[i] = null;
-            }
-            _vertexCounts[i] = 0;
-            return;
-        }
-
-        // Release old buffer and create new one sized to this chunk's vertex count
-        if (_vertexBuffers[i] != null)
-        {
-            SDL3.SDL_ReleaseGPUBuffer(_gpu.Device, _vertexBuffers[i]);
-        }
-
-        var bufInfo = new SDL_GPUBufferCreateInfo
-        {
-            usage = SDL_GPUBufferUsageFlags.SDL_GPU_BUFFERUSAGE_VERTEX,
-            size  = (uint)(count * 16)
-        };
-        _vertexBuffers[i] = SDL3.SDL_CreateGPUBuffer(_gpu.Device, &bufInfo);
-        if (_vertexBuffers[i] == null)
-            throw new Exception(SDL3.SDL_GetError());
-
-        // Upload via reusable transfer buffer with cycle=true
-        uint byteSize = (uint)(count * 16);
-        var mapped = (VoxelVertex*)SDL3.SDL_MapGPUTransferBuffer(_gpu.Device, _transferBuffer, true);
-        _meshScratch.AsSpan(0, count).CopyTo(new Span<VoxelVertex>(mapped, count));
-        SDL3.SDL_UnmapGPUTransferBuffer(_gpu.Device, _transferBuffer);
-
-        var copyPass = SDL3.SDL_BeginGPUCopyPass(cmd);
-        var src = new SDL_GPUTransferBufferLocation { transfer_buffer = _transferBuffer, offset = 0 };
-        var dst = new SDL_GPUBufferRegion { buffer = _vertexBuffers[i], offset = 0, size = byteSize };
-        SDL3.SDL_UploadToGPUBuffer(copyPass, &src, &dst, true);
-        SDL3.SDL_EndGPUCopyPass(copyPass);
-
-        _vertexCounts[i] = (uint)count;
     }
 
     private int _frameCount;
@@ -304,10 +263,6 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
         if (_colorTableBuffer != null)
         {
             SDL3.SDL_ReleaseGPUBuffer(_gpu.Device, _colorTableBuffer);
-        }
-        if (_transferBuffer != null)
-        {
-            SDL3.SDL_ReleaseGPUTransferBuffer(_gpu.Device, _transferBuffer);
         }
         if (_pipeline != null)
         {

@@ -15,7 +15,7 @@ internal sealed unsafe class SdlRenderer : IRenderer
     internal SdlRenderer(SdlGpuDevice gpu, ReadOnlySpan<Vector4> colorTable)
     {
         _gpu = gpu;
-        _subRenderers.Add(new VoxelChunkRenderer(gpu, colorTable, new GreedyChunkMeshBuilder()));
+        _subRenderers.Add(new VoxelChunkRenderer(gpu, colorTable, () => new GreedyChunkMeshBuilder()));
     }
 
     public void DrawFrame(CameraView view, VoxelWorld world, bool wireframe = false)
