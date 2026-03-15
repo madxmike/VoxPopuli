@@ -199,11 +199,7 @@ internal sealed unsafe class VoxelChunkRenderer : ISubRenderer
 
         foreach (int i in frame.World.DrainDirtyChunks())
         {
-            if (_uploadQueue.IsInFlight(i))
-            {
-                continue;
-            }
-            _uploadQueue.Schedule(frame.World, i);
+            _uploadQueue.Reschedule(frame.World, i, _vertexCounts);
         }
     }
 

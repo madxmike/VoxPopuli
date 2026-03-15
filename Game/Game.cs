@@ -1,5 +1,6 @@
 namespace VoxPopuli.Game;
 
+using System.Numerics;
 using VoxPopuli.Renderer;
 
 internal sealed class VoxGame : IDisposable
@@ -16,17 +17,22 @@ internal sealed class VoxGame : IDisposable
         TerrainGenerator.GenerateWorld(_world, seed: 42);
     }
 
-    internal void TriggerEdit()
+    internal void DeleteClosestChunk(Vector3 eye, Vector3 target)
     {
-        _world.SetBlock(240, 0, 240, 32, 32, 32, 0);
+        var dir = Vector3.Normalize(target - eye);
+        int ci = _world.RaycastChunk(eye, dir);
+        if (ci >= 0) _world.DeleteChunk(ci);
     }
 
     internal void ToggleWireframe() => _wireframe = !_wireframe;
 
-    internal void Tick(CameraInput input)
+    internal void MarkAllChunksDirty() => _world.MarkAllChunksDirty();
+
+    internal CameraView Tick(CameraInput input)
     {
         var view = _camera.Update(input);
         _renderer.DrawFrame(view, _world, _wireframe);
+        return view;
     }
 
     public void Dispose() { }

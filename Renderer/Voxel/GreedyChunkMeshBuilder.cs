@@ -2,6 +2,7 @@ namespace VoxPopuli.Renderer;
 
 using System;
 using System.Numerics;
+using System.Threading;
 using VoxPopuli.Game;
 
 /// <summary>
@@ -49,7 +50,7 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
     ];
 
     /// <inheritdoc/>
-    public int Build(VoxelWorld world, int chunkIndex, Span<VoxelVertex> output)
+    public int Build(VoxelWorld world, int chunkIndex, Span<VoxelVertex> output, CancellationToken ct)
     {
         var origin = VoxelWorld.ChunkOrigin(chunkIndex);
         int ox = (int)origin.X, oy = (int)origin.Y, oz = (int)origin.Z;
@@ -60,6 +61,7 @@ internal sealed class GreedyChunkMeshBuilder : IChunkMeshBuilder
         {
             for (int depth = 0; depth < Chunk.SIZE; depth++)
             {
+                ct.ThrowIfCancellationRequested();
                 BuildMask(world, chunk, ox, oy, oz, face, depth);
                 vertexCount += EmitQuads(output, vertexCount, ox, oy, oz, face, depth);
             }

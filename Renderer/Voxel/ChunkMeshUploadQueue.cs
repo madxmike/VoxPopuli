@@ -2,6 +2,7 @@ namespace VoxPopuli.Renderer;
 
 using System;
 using System.Collections.Concurrent;
+using System.Threading;
 using System.Threading.Tasks;
 using SDL;
 using VoxPopuli.Game;
@@ -10,7 +11,7 @@ internal sealed unsafe class ChunkMeshUploadQueue
 {
     private readonly SdlGpuDevice _gpu;
     private readonly Func<IChunkMeshBuilder> _meshBuilderFactory;
-    private readonly bool[] _inFlight = new bool[VoxelWorld.MAX_CHUNKS];
+    private readonly CancellationTokenSource?[] _inFlight = new CancellationTokenSource?[VoxelWorld.MAX_CHUNKS];
     private readonly ConcurrentQueue<MeshResult> _completed = new();
     private readonly ConcurrentBag<VoxelVertex[]> _scratchPool = new();
 
@@ -33,21 +34,45 @@ internal sealed unsafe class ChunkMeshUploadQueue
         _meshBuilderFactory = meshBuilderFactory;
     }
 
-    internal bool IsInFlight(int chunkIndex) => _inFlight[chunkIndex];
+    internal bool IsInFlight(int chunkIndex) => _inFlight[chunkIndex] != null;
+
+    internal void Reschedule(VoxelWorld world, int chunkIndex, uint[] vertexCounts)
+    {
+        vertexCounts[chunkIndex] = 0;
+        if (_inFlight[chunkIndex] is { } existing)
+        {
+            existing.Cancel();
+            existing.Dispose();
+            _inFlight[chunkIndex] = null;
+        }
+        Schedule(world, chunkIndex);
+    }
 
     internal void Schedule(VoxelWorld world, int chunkIndex)
     {
-        _inFlight[chunkIndex] = true;
+        var cts = new CancellationTokenSource();
+        _inFlight[chunkIndex] = cts;
+        var ct = cts.Token;
         if (!_scratchPool.TryTake(out VoxelVertex[]? scratch))
         {
             scratch = new VoxelVertex[VoxelVertex.MaxVerticesPerChunk];
         }
         Task.Run(() =>
         {
-            var builder = _meshBuilderFactory();
-            int count = builder.Build(world, chunkIndex, scratch.AsSpan());
-            _completed.Enqueue(new MeshResult(chunkIndex, scratch, count));
-        });
+            try
+            {
+                var builder = _meshBuilderFactory();
+                int count = builder.Build(world, chunkIndex, scratch.AsSpan(), ct);
+                _inFlight[chunkIndex] = null;
+                cts.Dispose();
+                _completed.Enqueue(new MeshResult(chunkIndex, scratch, count));
+            }
+            catch (OperationCanceledException)
+            {
+                _scratchPool.Add(scratch);
+                _inFlight[chunkIndex] = null;
+            }
+        }, ct);
     }
 
     internal void UploadPending(SDL_GPUCommandBuffer* cmd, SDL_GPUBuffer*[] vertexBuffers, uint[] vertexCounts)
@@ -111,7 +136,6 @@ internal sealed unsafe class ChunkMeshUploadQueue
             }
 
             _scratchPool.Add(result.Vertices);
-            _inFlight[i] = false;
         }
     }
 }

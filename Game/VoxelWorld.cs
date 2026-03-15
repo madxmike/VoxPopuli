@@ -62,6 +62,21 @@ public sealed class VoxelWorld
         return _voxels[ci * Chunk.VOLUME + Chunk.Index(x % CHUNK_SIZE, y % CHUNK_SIZE, z % CHUNK_SIZE)];
     }
 
+    private void MarkDirty(int ci)
+    {
+        _dirty[ci] = true;
+        int cx = ChunkIndexToCoords(ci, out int cy, out int cz);
+        for (int dx = -1; dx <= 1; dx++)
+        for (int dy = -1; dy <= 1; dy++)
+        for (int dz = -1; dz <= 1; dz++)
+        {
+            if (dx == 0 && dy == 0 && dz == 0) continue;
+            int nx = cx + dx, ny = cy + dy, nz = cz + dz;
+            if ((uint)nx < CHUNKS_X && (uint)ny < CHUNKS_Y && (uint)nz < CHUNKS_Z)
+                _dirty[ChunkIndex(nx, ny, nz)] = true;
+        }
+    }
+
     public void SetVoxel(int x, int y, int z, byte typeId)
     {
         if ((uint)x >= WorldSizeX || (uint)y >= WorldSizeY || (uint)z >= WorldSizeZ)
@@ -71,7 +86,7 @@ public sealed class VoxelWorld
         int cx = x / CHUNK_SIZE, cy = y / CHUNK_SIZE, cz = z / CHUNK_SIZE;
         int ci = ChunkIndex(cx, cy, cz);
         _voxels[ci * Chunk.VOLUME + Chunk.Index(x % CHUNK_SIZE, y % CHUNK_SIZE, z % CHUNK_SIZE)] = typeId;
-        _dirty[ci] = true;
+        MarkDirty(ci);
     }
 
     public void SetBlock(int x, int y, int z, int sizeX, int sizeY, int sizeZ, byte typeId)
@@ -92,10 +107,77 @@ public sealed class VoxelWorld
                     int cx = vx / CHUNK_SIZE, cy = vy / CHUNK_SIZE, cz = vz / CHUNK_SIZE;
                     int ci = ChunkIndex(cx, cy, cz);
                     _voxels[ci * Chunk.VOLUME + Chunk.Index(vx % CHUNK_SIZE, vy % CHUNK_SIZE, vz % CHUNK_SIZE)] = typeId;
-                    _dirty[ci] = true;
+                    MarkDirty(ci);
                 }
             }
         }
+    }
+
+    // Returns the index of the first non-empty chunk hit by the ray, or -1 if none.
+    public int RaycastChunk(Vector3 origin, Vector3 dir)
+    {
+        Span<(float t, int i)> hits = stackalloc (float, int)[MAX_CHUNKS];
+        int hitCount = 0;
+
+        for (int i = 0; i < MAX_CHUNKS; i++)
+        {
+            Vector3 invDir = new Vector3(1f / dir.X, 1f / dir.Y, 1f / dir.Z);
+            Vector3 t0 = (ChunkAabbMin[i] - origin) * invDir;
+            Vector3 t1 = (ChunkAabbMax[i] - origin) * invDir;
+            float tMin = MathF.Max(MathF.Max(MathF.Min(t0.X, t1.X), MathF.Min(t0.Y, t1.Y)), MathF.Min(t0.Z, t1.Z));
+            float tMax = MathF.Min(MathF.Min(MathF.Max(t0.X, t1.X), MathF.Max(t0.Y, t1.Y)), MathF.Max(t0.Z, t1.Z));
+            if (tMax >= 0 && tMin <= tMax)
+                hits[hitCount++] = (tMin, i);
+        }
+
+        // Sort hits by distance (insertion sort — hitCount is small in practice)
+        for (int i = 1; i < hitCount; i++)
+        {
+            var cur = hits[i];
+            int j = i - 1;
+            while (j >= 0 && hits[j].t > cur.t) { hits[j + 1] = hits[j]; j--; }
+            hits[j + 1] = cur;
+        }
+
+        for (int h = 0; h < hitCount; h++)
+        {
+            int ci = hits[h].i;
+            var data = _voxels.AsSpan(ci * Chunk.VOLUME, Chunk.VOLUME);
+            foreach (byte b in data) if (b != 0) return ci;
+        }
+        return -1;
+    }
+
+    public int GetClosestChunkIndex(Vector3 pos)
+    {
+        int cx = Math.Clamp((int)(pos.X / CHUNK_SIZE), 0, CHUNKS_X - 1);
+        int cy = Math.Clamp((int)(pos.Y / CHUNK_SIZE), 0, CHUNKS_Y - 1);
+        int cz = Math.Clamp((int)(pos.Z / CHUNK_SIZE), 0, CHUNKS_Z - 1);
+        return ChunkIndex(cx, cy, cz);
+    }
+
+    public void DeleteChunk(int chunkIndex)
+    {
+        Array.Clear(_voxels, chunkIndex * Chunk.VOLUME, Chunk.VOLUME);
+        MarkDirty(chunkIndex);
+    }
+
+    public void MarkAllChunksDirty()
+    {
+        for (int i = 0; i < MAX_CHUNKS; i++) _dirty[i] = true;
+    }
+
+    public void DeleteClosestChunk(Vector3 eye)
+    {
+        int closest = 0;
+        float minDist = float.MaxValue;
+        for (int i = 0; i < MAX_CHUNKS; i++)
+        {
+            float d = Vector3.DistanceSquared(eye, (ChunkAabbMin[i] + ChunkAabbMax[i]) * 0.5f);
+            if (d < minDist) { minDist = d; closest = i; }
+        }
+        Array.Clear(_voxels, closest * Chunk.VOLUME, Chunk.VOLUME);
+        MarkDirty(closest);
     }
 
     public ReadOnlySpan<int> DrainDirtyChunks()
