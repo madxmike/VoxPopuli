@@ -15,6 +15,7 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
+        <PackageReference Include="ppy.SDL3-CS" Version="2026.302.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -23,6 +24,10 @@
         <Compile Include="../Renderer/Voxel/IChunkMeshBuilder.cs" />
         <Compile Include="../Renderer/Voxel/VoxelVertex.cs" />
         <Compile Include="../Renderer/Voxel/GreedyChunkMeshBuilder.cs" />
+        <Compile Include="../Renderer/UI/Color4.cs" />
+        <Compile Include="../Renderer/UI/UIQuadVertex.cs" />
+        <Compile Include="../Renderer/UI/UIDrawContext.cs" />
+        <Compile Include="../Renderer/UI/UIRenderingException.cs" />
     </ItemGroup>
 
 </Project>

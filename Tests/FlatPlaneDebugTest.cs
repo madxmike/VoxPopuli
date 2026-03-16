@@ -16,7 +16,7 @@ public sealed class FlatPlaneDebugTest(ITestOutputHelper output)
 
         var builder = new GreedyChunkMeshBuilder();
         var buf = new VoxelVertex[VoxelVertex.MaxVerticesPerChunk];
-        int verts = builder.Build(world, 0, buf);
+        int verts = builder.Build(world, 0, buf, CancellationToken.None);
         output.WriteLine($"Total verts: {verts}, quads: {verts/6}");
         // Dump unique Y=6 (top face) quads
         for (int i = 0; i < verts; i += 6)

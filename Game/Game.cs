@@ -28,6 +28,8 @@ internal sealed class VoxGame : IDisposable
 
     internal void MarkAllChunksDirty() => _world.MarkAllChunksDirty();
 
+    internal VoxelWorld World => _world;
+
     internal CameraView Tick(CameraInput input)
     {
         var view = _camera.Update(input);

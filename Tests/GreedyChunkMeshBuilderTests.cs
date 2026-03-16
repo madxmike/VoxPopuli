@@ -15,7 +15,7 @@ public sealed class GreedyChunkMeshBuilderTests
     public void EmptyChunk_Returns0()
     {
         var world = new VoxelWorld();
-        Assert.Equal(0, _greedy.Build(world, 0, _output));
+        Assert.Equal(0, _greedy.Build(world, 0, _output, CancellationToken.None));
     }
 
     [Fact]
@@ -23,7 +23,7 @@ public sealed class GreedyChunkMeshBuilderTests
     {
         var world = new VoxelWorld();
         world.SetVoxel(5, 5, 5, 1);
-        Assert.Equal(36, _greedy.Build(world, 0, _output));
+        Assert.Equal(36, _greedy.Build(world, 0, _output, CancellationToken.None));
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public sealed class GreedyChunkMeshBuilderTests
         {
             world.SetVoxel(5+dx, 5+dy, 5+dz, 1);
         }
-        Assert.Equal(180, _greedy.Build(world, 0, _output));
+        Assert.Equal(180, _greedy.Build(world, 0, _output, CancellationToken.None));
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public sealed class GreedyChunkMeshBuilderTests
         var world = new VoxelWorld();
         world.SetVoxel(31, 5, 5, 1);
         world.SetVoxel(32, 5, 5, 1);
-        Assert.Equal(30, _greedy.Build(world, 0, _output));
+        Assert.Equal(30, _greedy.Build(world, 0, _output, CancellationToken.None));
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public sealed class GreedyChunkMeshBuilderTests
         var world = new VoxelWorld();
         world.SetVoxel(5, 5, 5, 1);
         world.SetVoxel(6, 5, 5, 1);
-        int count = _greedy.Build(world, 0, _output);
+        int count = _greedy.Build(world, 0, _output, CancellationToken.None);
         // Two isolated voxels would be 72; merged faces reduce this
         Assert.True(count < 72);
     }
@@ -64,7 +64,7 @@ public sealed class GreedyChunkMeshBuilderTests
         int ci = VoxelWorld.ChunkIndex(1, 0, 0);
         var world = new VoxelWorld();
         world.SetVoxel(32, 0, 0, 1);
-        int count = _greedy.Build(world, ci, _output);
+        int count = _greedy.Build(world, ci, _output, CancellationToken.None);
         Assert.True(count > 0);
         for (int i = 0; i < count; i++)
         {

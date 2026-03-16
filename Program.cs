@@ -5,6 +5,7 @@ using SDL;
 using VoxPopuli.Game;
 using VoxPopuli.Input;
 using VoxPopuli.Renderer;
+using VoxPopuli.Renderer.UI;
 internal static class Program
 {
     [STAThread]
@@ -78,6 +79,12 @@ internal static class Program
 
                 zoomDelta = 0f; mouseDX = 0f; mouseDY = 0f;
                 rotateDelta = 0f; panX = 0f; panZ = 0f;
+
+                var ui = renderer.GetUIDrawContext();
+                ui.DrawRect(UIAnchor.TopLeft, new Vector2(10, 10), new Vector2(200, 40), new Color4(1f, 0f, 0f, 0.8f));
+                ui.DrawRect(UIAnchor.BottomRight, new Vector2(-10, -10), new Vector2(100, 100), new Color4(0f, 1f, 0f, 0.5f));
+
+                renderer.DrawFrame(view, game.World);
             }
         }
     }

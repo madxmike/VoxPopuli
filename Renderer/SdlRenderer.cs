@@ -4,12 +4,14 @@ using System.Collections.Generic;
 using System.Numerics;
 using SDL;
 using VoxPopuli.Game;
+using VoxPopuli.Renderer.UI;
 
 /// <summary>Main renderer implementation using SDL3 GPU API.</summary>
 internal sealed unsafe class SdlRenderer : IRenderer
 {
     private readonly SdlGpuDevice _gpu;
     private readonly List<ISubRenderer> _subRenderers = new();
+    private readonly UIRenderer _uiRenderer;
     private Matrix4x4 _proj;
     private uint _projW, _projH;
 
@@ -18,6 +20,7 @@ internal sealed unsafe class SdlRenderer : IRenderer
     {
         _gpu = gpu;
         _subRenderers.Add(new VoxelChunkRenderer(gpu, colorTable, () => new GreedyChunkMeshBuilder()));
+        _uiRenderer = new UIRenderer(gpu);
     }
 
     /// <summary>Draws a frame with the given camera view and world.</summary>
@@ -56,6 +59,8 @@ internal sealed unsafe class SdlRenderer : IRenderer
             sub.PrepareFrame(cmd, in frame);
         }
 
+        _uiRenderer.PrepareFrame(cmd, in frame);
+
         var colorTarget = new SDL_GPUColorTargetInfo
         {
             texture = swapchain,
@@ -83,16 +88,25 @@ internal sealed unsafe class SdlRenderer : IRenderer
             sub.Draw(in frame);
         }
 
+        _uiRenderer.Draw(in frame);
+
         SDL3.SDL_EndGPURenderPass(pass);
         SDL3.SDL_SubmitGPUCommandBuffer(cmd);
     }
 
-    /// <summary>Disposes all sub-renderers.</summary>
+    /// <summary>Gets a frame-scoped UIDrawContext for UI rendering.</summary>
+    public UIDrawContext GetUIDrawContext()
+    {
+        return _uiRenderer.GetUIDrawContext();
+    }
+
+    /// <summary>Disposes all sub-renderers and the UI renderer.</summary>
     public void Dispose()
     {
         foreach (var sub in _subRenderers)
         {
             sub.Dispose();
         }
+        _uiRenderer.Dispose();
     }
 }
