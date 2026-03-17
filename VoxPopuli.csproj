@@ -146,8 +146,16 @@
               Condition="!$([MSBuild]::IsOSPlatform('Windows'))" />
     </Target>
 
+    <!-- Clone SDL_ttf if not already present -->
+    <Target Name="CloneSDL3Ttf"
+            BeforeTargets="BuildSDL3Ttf"
+            Condition="!Exists('$(SDL3TtfDir)/.git')">
+        <Exec Command="git clone https://github.com/libsdl-org/SDL_ttf.git $(SDL3TtfDir)" />
+        <Exec Command="git -C $(SDL3TtfDir) submodule update --init --recursive" />
+    </Target>
+
     <!-- Build and install SDL_ttf into native/install -->
-    <Target Name="BuildSDL3Ttf" BeforeTargets="Build" Condition="!Exists('$(SDL3TtfLib)')">
+    <Target Name="BuildSDL3Ttf" BeforeTargets="Build" DependsOnTargets="BuildSDL3" Condition="!Exists('$(SDL3TtfLib)')">
         <Exec Command="cmake -S $(SDL3TtfDir) -B $(SDL3TtfBuildDir) -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(NativeInstallDir) -DCMAKE_PREFIX_PATH=$(NativeInstallDir) -DSDLTTF_VENDORED=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0"
               WorkingDirectory="$(MSBuildProjectDirectory)" />
         <Exec Command="cmake --build $(SDL3TtfBuildDir) --config Release --parallel $(NativeBuildJobs)" />
