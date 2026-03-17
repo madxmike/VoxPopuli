@@ -9,9 +9,11 @@ public sealed class UIDrawContextTests
     [Fact]
     public void DrawRect_WritesExactly6Vertices()
     {
-        var buffer = new UIQuadVertex[4096 * 6];
-        var count = 0;
-        var context = new UIDrawContext(buffer, 1920, 1080, ref count);
+        var quadBuffer = new UIQuadVertex[4096 * 6];
+        var quadCount = 0;
+        var textBuffer = Span<UITextData>.Empty;
+        var textCount = 0;
+        var context = new UIDrawContext(quadBuffer, 1920, 1080, ref quadCount, textBuffer, ref textCount);
 
         context.DrawRect(new Vector2(0, 0), new Vector2(100, 50), Color4.White);
 
@@ -21,9 +23,11 @@ public sealed class UIDrawContextTests
     [Fact]
     public void DrawRect_Anchor_TopLeft_MatchesExpectedPosition()
     {
-        var buffer = new UIQuadVertex[4096 * 6];
-        var count = 0;
-        var context = new UIDrawContext(buffer, 1920, 1080, ref count);
+        var quadBuffer = new UIQuadVertex[4096 * 6];
+        var quadCount = 0;
+        var textBuffer = Span<UITextData>.Empty;
+        var textCount = 0;
+        var context = new UIDrawContext(quadBuffer, 1920, 1080, ref quadCount, textBuffer, ref textCount);
 
         context.DrawRect(UIAnchor.TopLeft, new Vector2(10, 20), new Vector2(100, 50), Color4.White);
 
@@ -34,9 +38,11 @@ public sealed class UIDrawContextTests
     [Fact]
     public void DrawRect_Anchor_BottomRight_MatchesExpectedPosition()
     {
-        var buffer = new UIQuadVertex[4096 * 6];
-        var count = 0;
-        var context = new UIDrawContext(buffer, 1920, 1080, ref count);
+        var quadBuffer = new UIQuadVertex[4096 * 6];
+        var quadCount = 0;
+        var textBuffer = Span<UITextData>.Empty;
+        var textCount = 0;
+        var context = new UIDrawContext(quadBuffer, 1920, 1080, ref quadCount, textBuffer, ref textCount);
 
         context.DrawRect(UIAnchor.BottomRight, new Vector2(-10, -20), new Vector2(100, 50), Color4.White);
 
@@ -49,9 +55,11 @@ public sealed class UIDrawContextTests
     [Fact]
     public void DrawRect_Anchor_BottomLeft_MatchesExpectedPosition()
     {
-        var buffer = new UIQuadVertex[4096 * 6];
-        var count = 0;
-        var context = new UIDrawContext(buffer, 1920, 1080, ref count);
+        var quadBuffer = new UIQuadVertex[4096 * 6];
+        var quadCount = 0;
+        var textBuffer = Span<UITextData>.Empty;
+        var textCount = 0;
+        var context = new UIDrawContext(quadBuffer, 1920, 1080, ref quadCount, textBuffer, ref textCount);
 
         context.DrawRect(UIAnchor.BottomLeft, new Vector2(10, -20), new Vector2(100, 50), Color4.White);
 
@@ -64,9 +72,11 @@ public sealed class UIDrawContextTests
     [Fact]
     public void DrawRect_Anchor_Center_MatchesExpectedPosition()
     {
-        var buffer = new UIQuadVertex[4096 * 6];
-        var count = 0;
-        var context = new UIDrawContext(buffer, 1920, 1080, ref count);
+        var quadBuffer = new UIQuadVertex[4096 * 6];
+        var quadCount = 0;
+        var textBuffer = Span<UITextData>.Empty;
+        var textCount = 0;
+        var context = new UIDrawContext(quadBuffer, 1920, 1080, ref quadCount, textBuffer, ref textCount);
 
         context.DrawRect(UIAnchor.Center, new Vector2(5, 10), new Vector2(100, 50), Color4.White);
 
@@ -79,9 +89,11 @@ public sealed class UIDrawContextTests
     [Fact]
     public void DrawRect_Anchor_TopCenter_MatchesExpectedPosition()
     {
-        var buffer = new UIQuadVertex[4096 * 6];
-        var count = 0;
-        var context = new UIDrawContext(buffer, 1920, 1080, ref count);
+        var quadBuffer = new UIQuadVertex[4096 * 6];
+        var quadCount = 0;
+        var textBuffer = Span<UITextData>.Empty;
+        var textCount = 0;
+        var context = new UIDrawContext(quadBuffer, 1920, 1080, ref quadCount, textBuffer, ref textCount);
 
         context.DrawRect(UIAnchor.TopCenter, new Vector2(-5, 20), new Vector2(100, 50), Color4.White);
 
@@ -94,9 +106,11 @@ public sealed class UIDrawContextTests
     [Fact]
     public void DrawRect_Anchor_BottomCenter_MatchesExpectedPosition()
     {
-        var buffer = new UIQuadVertex[4096 * 6];
-        var count = 0;
-        var context = new UIDrawContext(buffer, 1920, 1080, ref count);
+        var quadBuffer = new UIQuadVertex[4096 * 6];
+        var quadCount = 0;
+        var textBuffer = Span<UITextData>.Empty;
+        var textCount = 0;
+        var context = new UIDrawContext(quadBuffer, 1920, 1080, ref quadCount, textBuffer, ref textCount);
 
         context.DrawRect(UIAnchor.BottomCenter, new Vector2(0, -10), new Vector2(100, 50), Color4.White);
 
@@ -110,9 +124,11 @@ public sealed class UIDrawContextTests
     [Fact]
     public void DrawRect_Overflow_Release_SetsIsOverflowed()
     {
-        var buffer = new UIQuadVertex[12]; // Capacity for 2 quads (2 * 6 = 12)
-        var count = 0;
-        var context = new UIDrawContext(buffer, 1920, 1080, ref count);
+        var quadBuffer = new UIQuadVertex[12]; // Capacity for 2 quads (2 * 6 = 12)
+        var quadCount = 0;
+        var textBuffer = Span<UITextData>.Empty;
+        var textCount = 0;
+        var context = new UIDrawContext(quadBuffer, 1920, 1080, ref quadCount, textBuffer, ref textCount);
 
         // Fill buffer to capacity
         context.DrawRect(new Vector2(0, 0), new Vector2(100, 50), Color4.White);

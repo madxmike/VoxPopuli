@@ -26,6 +26,7 @@
         <Compile Include="../Renderer/Voxel/GreedyChunkMeshBuilder.cs" />
         <Compile Include="../Renderer/UI/Color4.cs" />
         <Compile Include="../Renderer/UI/UIQuadVertex.cs" />
+        <Compile Include="../Renderer/UI/UITextData.cs" />
         <Compile Include="../Renderer/UI/UIDrawContext.cs" />
         <Compile Include="../Renderer/UI/UIRenderingException.cs" />
     </ItemGroup>

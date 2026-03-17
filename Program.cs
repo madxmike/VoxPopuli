@@ -83,6 +83,8 @@ internal static class Program
                 var ui = renderer.GetUIDrawContext();
                 ui.DrawRect(UIAnchor.TopLeft, new Vector2(10, 10), new Vector2(200, 40), new Color4(1f, 0f, 0f, 0.8f));
                 ui.DrawRect(UIAnchor.BottomRight, new Vector2(-10, -10), new Vector2(100, 100), new Color4(0f, 1f, 0f, 0.5f));
+                ui.DrawText(new Vector2(50, 100), "Hello, VoxPopuli!", Color4.White);
+                ui.DrawText(UIAnchor.TopRight, new Vector2(-10, 10), "FPS: 60", new Color4(1f, 1f, 0f, 1f));
 
                 renderer.DrawFrame(view, game.World);
             }

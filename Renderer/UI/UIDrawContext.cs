@@ -21,22 +21,30 @@ internal ref struct UIDrawContext
 {
     private Span<UIQuadVertex> _buffer;
     private ref int _countRef;
+    private Span<UITextData> _textBuffer;
+    private ref int _textCountRef;
     private uint _width;
     private uint _height;
     private bool _isOverflowed;
+    private bool _isTextOverflowed;
 
     /// <summary>Constructs a new UIDrawContext with the specified buffer and screen dimensions.</summary>
     /// <param name="buffer">Span of UIQuadVertex to write vertices into.</param>
     /// <param name="width">Screen width in pixels.</param>
     /// <param name="height">Screen height in pixels.</param>
     /// <param name="countRef">Reference to the renderer's vertex count to increment directly.</param>
-    internal UIDrawContext(Span<UIQuadVertex> buffer, uint width, uint height, ref int countRef)
+    /// <param name="textBuffer">Span of UITextData to write text draw requests into.</param>
+    /// <param name="textCountRef">Reference to the renderer's text count to increment directly.</param>
+    internal UIDrawContext(Span<UIQuadVertex> buffer, uint width, uint height, ref int countRef, Span<UITextData> textBuffer, ref int textCountRef)
     {
         _buffer = buffer;
         _countRef = ref countRef;
+        _textBuffer = textBuffer;
+        _textCountRef = ref textCountRef;
         _width = width;
         _height = height;
         _isOverflowed = false;
+        _isTextOverflowed = false;
     }
 
     /// <summary>Writes a quad with the specified screen-space position and size.</summary>
@@ -86,11 +94,51 @@ internal ref struct UIDrawContext
         DrawRect(position, size, color);
     }
 
+    /// <summary>Queues a text draw request at the specified position.</summary>
+    /// <param name="position">Top-left position in screen-space pixels.</param>
+    /// <param name="text">The text string to render.</param>
+    /// <param name="color">RGBA color of the text.</param>
+    internal void DrawText(Vector2 position, string text, Color4 color)
+    {
+#if DEBUG
+        if (_textCountRef + 1 > _textBuffer.Length)
+        {
+            throw new UIRenderingException("Text buffer overflow");
+        }
+#else
+        if (_textCountRef + 1 > _textBuffer.Length)
+        {
+            _isTextOverflowed = true;
+            return;
+        }
+#endif
+
+        _textBuffer[_textCountRef] = new UITextData(position, color, text);
+        _textCountRef++;
+    }
+
+    /// <summary>Queues a text draw request with anchor-based positioning.</summary>
+    /// <param name="anchor">Anchor point for positioning.</param>
+    /// <param name="offset">Pixel offset from the anchor position.</param>
+    /// <param name="text">The text string to render.</param>
+    /// <param name="color">RGBA color of the text.</param>
+    internal void DrawText(UIAnchor anchor, Vector2 offset, string text, Color4 color)
+    {
+        Vector2 position = ResolveAnchor(anchor, offset, Vector2.Zero, _width, _height);
+        DrawText(position, text, color);
+    }
+
     /// <summary>Returns a read-only span of the vertices written this frame.</summary>
     internal readonly ReadOnlySpan<UIQuadVertex> Vertices => _buffer[.._countRef];
 
+    /// <summary>Returns a read-only span of the text data written this frame.</summary>
+    internal readonly ReadOnlySpan<UITextData> TextData => _textBuffer[.._textCountRef];
+
     /// <summary>True if DrawRect was called when the buffer was full (release only).</summary>
     internal bool IsOverflowed => _isOverflowed;
+
+    /// <summary>True if DrawText was called when the text buffer was full (release only).</summary>
+    internal bool IsTextOverflowed => _isTextOverflowed;
 
     /// <summary>Resolves an anchor + offset to a top-left pixel position.</summary>
     /// <param name="anchor">Anchor point.</param>

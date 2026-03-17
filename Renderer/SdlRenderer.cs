@@ -20,7 +20,7 @@ internal sealed unsafe class SdlRenderer : IRenderer
     {
         _gpu = gpu;
         _subRenderers.Add(new VoxelChunkRenderer(gpu, colorTable, () => new GreedyChunkMeshBuilder()));
-        _uiRenderer = new UIRenderer(gpu);
+        _uiRenderer = new UIRenderer(gpu, "/System/Library/Fonts/Helvetica.ttc", 16f);
     }
 
     /// <summary>Draws a frame with the given camera view and world.</summary>
@@ -51,7 +51,8 @@ internal sealed unsafe class SdlRenderer : IRenderer
             CommandBuffer = cmd,
             World = world,
             Wireframe = wireframe,
-            Frustum = Frustum.FromViewProj(viewProj)
+            Frustum = Frustum.FromViewProj(viewProj),
+            Gpu = _gpu
         };
 
         foreach (var sub in _subRenderers)

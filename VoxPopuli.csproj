@@ -10,6 +10,7 @@
 
     <ItemGroup>
         <PackageReference Include="ppy.SDL3-CS" Version="2026.302.0" />
+        <PackageReference Include="ppy.SDL3_ttf-CS" Version="2026.302.0" />
     </ItemGroup>
 
     <!-- Directory layout:
@@ -63,6 +64,13 @@
         <SDL3Lib Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(NativeInstallDir)/bin/SDL3.dll</SDL3Lib>
         <SDL3Lib Condition="$([MSBuild]::IsOSPlatform('OSX'))">$(NativeInstallDir)/lib/libSDL3.dylib</SDL3Lib>
         <SDL3Lib Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(NativeInstallDir)/lib/libSDL3.so</SDL3Lib>
+
+        <SDL3TtfDir>$(NativeDir)/SDL_ttf</SDL3TtfDir>
+        <SDL3TtfBuildDir>$(MSBuildProjectDirectory)/obj/native/SDL_ttf/build</SDL3TtfBuildDir>
+
+        <SDL3TtfLib Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(NativeInstallDir)/bin/SDL3_ttf.dll</SDL3TtfLib>
+        <SDL3TtfLib Condition="$([MSBuild]::IsOSPlatform('OSX'))">$(NativeInstallDir)/lib/libSDL3_ttf.dylib</SDL3TtfLib>
+        <SDL3TtfLib Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(NativeInstallDir)/lib/libSDL3_ttf.so</SDL3TtfLib>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -138,8 +146,16 @@
               Condition="!$([MSBuild]::IsOSPlatform('Windows'))" />
     </Target>
 
+    <!-- Build and install SDL_ttf into native/install -->
+    <Target Name="BuildSDL3Ttf" BeforeTargets="Build" Condition="!Exists('$(SDL3TtfLib)')">
+        <Exec Command="cmake -S $(SDL3TtfDir) -B $(SDL3TtfBuildDir) -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(NativeInstallDir) -DCMAKE_PREFIX_PATH=$(NativeInstallDir) -DSDLTTF_VENDORED=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0"
+              WorkingDirectory="$(MSBuildProjectDirectory)" />
+        <Exec Command="cmake --build $(SDL3TtfBuildDir) --config Release --parallel $(NativeBuildJobs)" />
+        <Exec Command="cmake --install $(SDL3TtfBuildDir) --config Release" />
+    </Target>
+
     <!-- Copy all native libs to the dotnet output directory -->
-    <Target Name="CopyNativeLibs" AfterTargets="BuildSDL3;BuildSDLShadercross" BeforeTargets="Build">
+    <Target Name="CopyNativeLibs" AfterTargets="BuildSDL3;BuildSDLShadercross;BuildSDL3Ttf" BeforeTargets="Build">
         <ItemGroup>
             <NativeLibs Include="$(NativeInstallDir)/bin/*.dll" />    <!-- Windows -->
             <NativeLibs Include="$(NativeInstallDir)/lib/*.so*" />    <!-- Linux -->

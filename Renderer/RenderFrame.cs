@@ -25,4 +25,6 @@ internal unsafe readonly struct RenderFrame
     public bool Wireframe { get; init; }
     /// <summary>Frustum for culling.</summary>
     public Frustum Frustum { get; init; }
+    /// <summary>GPU device for resource management.</summary>
+    public required SdlGpuDevice Gpu { get; init; }
 }

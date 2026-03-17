@@ -21,16 +21,21 @@ internal sealed unsafe class UIRenderer : IDisposable
     private SDL_GPUTransferBuffer* _transferBuffer;
     private SDL_GPUGraphicsPipeline* _pipeline;
     private readonly SdlGpuDevice _gpu;
+    private readonly TextRenderer _textRenderer;
 
     /// <summary>Creates a UI renderer with the given GPU device.</summary>
     /// <param name="gpu">The GPU device to use for rendering.</param>
-    internal UIRenderer(SdlGpuDevice gpu)
+    /// <param name="fontPath">Path to the font file for text rendering.</param>
+    /// <param name="fontSize">Font size in points.</param>
+    internal UIRenderer(SdlGpuDevice gpu, string fontPath, float fontSize)
     {
         _gpu = gpu;
         _vertices = new UIQuadVertex[MaxQuads * 6];
         _vertexCount = 0;
         _width = 0;
         _height = 0;
+
+        _textRenderer = new TextRenderer(gpu, fontPath, fontSize);
 
         _pipeline = CreatePipeline(gpu);
         if (_pipeline == null)
@@ -56,7 +61,8 @@ internal sealed unsafe class UIRenderer : IDisposable
     internal UIDrawContext GetUIDrawContext()
     {
         _vertexCount = 0;
-        return new UIDrawContext(_vertices.AsSpan(), _width, _height, ref _vertexCount);
+        _textRenderer.Reset();
+        return new UIDrawContext(_vertices.AsSpan(), _width, _height, ref _vertexCount, _textRenderer.GetTextBuffer(), ref _textRenderer.TextCount);
     }
 
     /// <summary>Prepares the frame: resets vertex count, uploads vertex data via copy pass.</summary>
@@ -66,6 +72,8 @@ internal sealed unsafe class UIRenderer : IDisposable
     {
         _width = frame.Width;
         _height = frame.Height;
+
+        _textRenderer.PrepareFrame(cmd);
 
         if (_vertexCount == 0)
         {
@@ -111,23 +119,23 @@ internal sealed unsafe class UIRenderer : IDisposable
     /// <param name="frame">The frame data containing the render pass.</param>
     internal void Draw(in RenderFrame frame)
     {
-        if (_vertexCount == 0)
-        {
-            return;
-        }
-
         var pass = frame.RenderPass;
         var cmd = frame.CommandBuffer;
 
-        var screenSize = new Vector2(_width, _height);
-        SDL3.SDL_PushGPUVertexUniformData(cmd, 0, (IntPtr)(&screenSize), (uint)sizeof(Vector2));
+        if (_vertexCount > 0)
+        {
+            var screenSize = new Vector2(_width, _height);
+            SDL3.SDL_PushGPUVertexUniformData(cmd, 0, (IntPtr)(&screenSize), (uint)sizeof(Vector2));
 
-        SDL3.SDL_BindGPUGraphicsPipeline(pass, _pipeline);
+            SDL3.SDL_BindGPUGraphicsPipeline(pass, _pipeline);
 
-        var vertexBinding = new SDL_GPUBufferBinding { buffer = _vertexBuffer, offset = 0 };
-        SDL3.SDL_BindGPUVertexBuffers(pass, 0, &vertexBinding, 1);
+            var vertexBinding = new SDL_GPUBufferBinding { buffer = _vertexBuffer, offset = 0 };
+            SDL3.SDL_BindGPUVertexBuffers(pass, 0, &vertexBinding, 1);
 
-        SDL3.SDL_DrawGPUPrimitives(pass, (uint)_vertexCount, 1, 0, 0);
+            SDL3.SDL_DrawGPUPrimitives(pass, (uint)_vertexCount, 1, 0, 0);
+        }
+
+        _textRenderer.Draw(pass, cmd, _width, _height);
     }
 
     /// <summary>Disposes all GPU resources.</summary>
@@ -150,6 +158,8 @@ internal sealed unsafe class UIRenderer : IDisposable
             SDL3.SDL_ReleaseGPUTransferBuffer(_gpu.Device, _transferBuffer);
             _transferBuffer = null;
         }
+
+        _textRenderer.Dispose();
     }
 
     private static SDL_GPUGraphicsPipeline* CreatePipeline(SdlGpuDevice gpu)

@@ -87,8 +87,8 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
         return SDL3.SDL_CreateGPUTexture(Device, &createInfo);
     }
 
-    internal SDL_GPUShader* LoadShaderInternal(string name, uint numUniformBuffers = 0, uint numReadOnlyStorageBuffers = 0)
-        => LoadShader(name, numUniformBuffers, numReadOnlyStorageBuffers);
+    internal SDL_GPUShader* LoadShaderInternal(string name, uint numUniformBuffers = 0, uint numReadOnlyStorageBuffers = 0, uint numSamplers = 0)
+        => LoadShader(name, numUniformBuffers, numReadOnlyStorageBuffers, numSamplers);
 
     /// <summary>Loads a pre-compiled compute shader binary and creates a compute pipeline.</summary>
     internal SDL_GPUComputePipeline* LoadComputePipeline(
@@ -130,7 +130,7 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
     }
 
     /// <summary>Loads a pre-compiled shader from the compiled shaders directory.</summary>
-    private SDL_GPUShader* LoadShader(string name, uint numUniformBuffers = 0, uint numReadOnlyStorageBuffers = 0)
+    private SDL_GPUShader* LoadShader(string name, uint numUniformBuffers = 0, uint numReadOnlyStorageBuffers = 0, uint numSamplers = 0)
     {
         var stage = name.Contains(".vert")
             ? SDL_GPUShaderStage.SDL_GPU_SHADERSTAGE_VERTEX
@@ -157,7 +157,8 @@ internal sealed unsafe class SdlGpuDevice : IDisposable
                 format = format,
                 stage = stage,
                 num_uniform_buffers = numUniformBuffers,
-                num_storage_buffers = numReadOnlyStorageBuffers
+                num_storage_buffers = numReadOnlyStorageBuffers,
+                num_samplers = numSamplers
             };
             return SDL3.SDL_CreateGPUShader(Device, &info);
         }
